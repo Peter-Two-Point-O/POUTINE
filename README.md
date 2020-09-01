@@ -17,6 +17,17 @@ From inside the pre-alpha/ directory, simply execute: `./homoplasy_counter.sh &>
 
 The `&>` redirects all terminal streams to the output file, while the final `&` backgrounds your process.  Both are optional.
 
+To get a sorted list of top hits, simply run: `consume_results.sh output_filename.out 0.05`
+
+`0.05` is the maxT p value cut-off user chooses.  This is a family-wise error rate so 5% or 1% are classically reasonable.  The script will also output the following files:
+
+1)  .all_associations := same as full homoplasy counter output file minus all the log information
+2)  .a1_sorted := each row represents one a1 allele in sorted fashion (a1 subset from .all_associations)
+3)  .a2_sorted := each row represents one a2 allele in sorted fashion (a2 subset from .all_associations)
+4)  .a1_top_hits_maxT := a1 associations filtered by maxT pvalue
+5)  .a2_top_hits_maxT := a2 associations filtered by maxT pvalue
+
+
 
 
 ## Reference Set
