@@ -1,6 +1,8 @@
 # Easy-Is-Better-Than-Better
 Pre-Alpha private repo for a new homoplasy counter.  This pre-alpha release is intended for a handful of users to test as major changes continue to be incorporated.
 
+
+
 ## Installation
 This program requires: (links are provided if you don't already have it on your box or want the latest version)
 
@@ -21,12 +23,11 @@ To get a sorted list of top hits, simply run: `consume_results.sh output_filenam
 
 `0.05` is the maxT p value cut-off user chooses.  This is a family-wise error rate so 5% or 1% are classically reasonable.  The script will also output the following files:
 
-1)  .all_associations := same as full homoplasy counter output file minus all the log information
-2)  .a1_sorted := each row represents one a1 allele in sorted fashion (a1 subset from .all_associations)
-3)  .a2_sorted := each row represents one a2 allele in sorted fashion (a2 subset from .all_associations)
-4)  .a1_top_hits_maxT := a1 associations filtered by maxT pvalue
-5)  .a2_top_hits_maxT := a2 associations filtered by maxT pvalue
-
+1)  `.all_associations`:  same as full homoplasy counter output file minus all the log information
+2)  `.a1_sorted`:  each row represents one a1 allele in sorted fashion (a1 subset from .all_associations)
+3)  `.a2_sorted`:  each row represents one a2 allele in sorted fashion (a2 subset from .all_associations)
+4)  `.a1_top_hits_maxT`:  a1 associations filtered by maxT pvalue
+5)  `.a2_top_hits_maxT`:  a2 associations filtered by maxT pvalue
 
 
 
@@ -39,9 +40,11 @@ Included in this release is our *reference set* comprised of 124 mtb strains we 
 - Concurrency bug during resampling:  This bug only occurs sometimes.  If your test run doesn't run to completion (`CLEAN EXIT` should be the last line in the output file) and you see the program hang, simply kill the process and restart it for now.
 
 
+
 ## Recent Major Code Changes
 - Removed q values from the significance assessment.  Thus, all things R have been removed.  Main reason for this feature removal is because the resampling-derived FWER (maxT variant) is sufficient for users to sort and look for top hits (remember the philosophy here is "easier is better than better").  It's also more robust than anything in the FDR space in the sense that any filtering of segregating sites will alter the p value distribution that FDR-based schemes use to calculate the splines, and thus can dramatically alter the final q values.  So for example, I have currently set the program to ignore all sites with <= 3 homoplasic mutations as these will not show statistical significance (less sites mean faster run with lower memory).  The maxT p values are typically immune to changes from site filtering.
 - Incorporated treetime for purposes of genotypic ancestral reconstruction using the default optimized joint probabilities method.  In a future release, when we are likely to add estimation statistics like a resampling-derived effect size + confidence intervals, we can reconsider if q values will benefit the user in any way.
+
 
 
 ## Upcoming Major Code Changes
