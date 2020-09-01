@@ -29,6 +29,10 @@ To get a sorted list of top hits, simply run: `consume_results.sh output_filenam
 4)  `.a1_top_hits_maxT`:  a1 associations filtered by maxT pvalue
 5)  `.a2_top_hits_maxT`:  a2 associations filtered by maxT pvalue
 
+For convenience, you can view the top hits in pretty-format using the following Unix command:
+`column -ts "ctrl-v tab" output_filename.out.a2_top_hits_maxT | less -S`
+
+To set TAB as the delimiter, macOS and Linux systems usually want `ctrl-v tab` which is a ctrl-v followed immediately by the tab key.
 
 
 ## Reference Set
@@ -50,7 +54,7 @@ Included in this release is our *reference set* comprised of 124 mtb strains we 
 ## Upcoming Major Code Changes
 - Incorporate vcf format.  This will also remove multi-fasta file and plink map file from standard input.
 - Full command-line interface.  This will be our store-front! so will try to make this elegant and easy.
-- Incorporate consume_results.sh code into main program along with other facilities to sort and consume results.
+- Incorporate consume_results.sh code into main program along with other facilities to sort and pretty-format results.
 - Organize output (e.g. various results files, log file, etc)
 - Logging code to facilitate prepared files for users to send us for trouble-shooting.
 - Platform independence (mostly for Windows compatibility)
