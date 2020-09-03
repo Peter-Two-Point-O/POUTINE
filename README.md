@@ -48,6 +48,7 @@ Included in this release is our *reference set* comprised of 124 mtb strains we 
 ## Recent Major Code Changes
 - Removed q values from the significance assessment.  Thus, all things R have been removed.  Main reason for this feature removal is because the resampling-derived FWER (maxT variant) is sufficient for users to sort and look for top hits (remember the philosophy here is "easier is better than better").  It's also more robust than anything in the FDR space in the sense that any filtering of segregating sites will alter the p value distribution that FDR-based schemes use to calculate the splines, and thus can dramatically alter the final q values.  So for example, I have currently set the program to ignore all sites with <= 3 homoplasic mutations as these will not show statistical significance (less sites mean faster run with lower memory).  The maxT p values are typically immune to changes from site filtering.  In a future release, when we are likely to add estimation statistics like a resampling-derived effect size + confidence intervals, we can reconsider if q values will benefit the user in any way.
 - Incorporated treetime for purposes of genotypic ancestral reconstruction using the default optimized joint probabilities method.
+- The program should be fully platform independent now.  Waiting for Windows users to get back to us to verify.  Tests on MacOS/Intel and Linux/Intel were successful.
 
 
 
@@ -57,7 +58,6 @@ Included in this release is our *reference set* comprised of 124 mtb strains we 
 - Incorporate consume_results.sh code into main program along with other facilities to sort and pretty-format results.
 - Organize output (e.g. various results files, log file, etc)
 - Logging code to facilitate prepared files for users to send us for trouble-shooting.
-- Platform independence (mostly for Windows compatibility)
 - Final code cleanup (e.g. comments, refactoring, etc)
 - Deployment:  Likely to compile entire program (minus python component) into binaries, one for each platform.  This removes the java dependency, and users will simply run the program like any other binary.  Future work:  consider replacing python component to make this program completely self-contained; no installation, simply download the binary and run!
 
