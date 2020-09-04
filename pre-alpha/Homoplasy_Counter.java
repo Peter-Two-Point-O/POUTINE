@@ -87,7 +87,7 @@ public class Homoplasy_Counter {
 //    private final AlternativeHypothesis TAIL_TYPE = AlternativeHypothesis.TWO_SIDED;
 //    private final AlternativeHypothesis TAIL_TYPE = AlternativeHypothesis.LESS_THAN;
     private final int m = 1000000;  // # perms / # replicates
-    private final int min_hcount = 4;  // 1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
+    private final int min_hcount = 7;  // 1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
 
     private final ZonedDateTime session_start_time = ZonedDateTime.now();
 
@@ -367,7 +367,7 @@ public class Homoplasy_Counter {
      * I anticipate outputting a log file for each run a user makes.  This helps keep track of things like # perms, phenotypes, sample size, etc
      */
     private void log_session_info() {
-        System.out.println("\n\nHomoplasy counting session log -----------");
+        System.out.printf("%n%nHomoplasy counting session log -----------%n");
 
         // log session start
         System.out.println("session start time:  " + session_start_time);
@@ -380,7 +380,7 @@ public class Homoplasy_Counter {
         System.out.println("EXTANT_NODES_ONLY = " + EXTANT_NODES_ONLY);
         System.out.println("tot_num_sample_cases = " + tot_num_sample_cases + "    tot_num_sample_controls = " + tot_num_sample_controls + "    sample size = " +
                 (tot_num_sample_cases + tot_num_sample_controls));
-        System.out.println("End log -------------\n\n");
+        System.out.printf("End log -------------%n%n");
     }
 
 
@@ -1875,8 +1875,8 @@ public class Homoplasy_Counter {
         // TODO:  print out total # calls, sum of all values for sanity check of total # calls, proportion unique calls, let program run till end
         // TODO:  calc time spent making ALL binom calls
         // TODO:  Tablesaw for histogram plot
-        System.out.println("\n\n");
-        System.out.println("Summary of redundant binom calls:");
+//        System.out.println("\n\n");
+        System.out.printf("%n%nSummary of redundant binom calls:%n");
 
         // total # calls calculated in 2 ways as a sanity check:
         // By HashMap:
@@ -1902,7 +1902,7 @@ public class Homoplasy_Counter {
         System.out.println("proportion_unique_calls = " + proportion_unique_calls);
         System.out.println("tot_duration_of_all_binom_calls_to_math_library = " + tot_duration_of_all_binom_calls_to_math_library);
         System.out.println("unique binom calls:  " + binom_test_calls.toString());
-        System.out.println("End of summary ----------\n\n");
+        System.out.printf("End of summary ----------%n%n");
     }
 
 
@@ -2132,7 +2132,7 @@ public class Homoplasy_Counter {
 
         // START OF RESAMPLING -----------------------------------
         int max_threads = Runtime.getRuntime().availableProcessors();
-        System.out.println("\n\nmax_threads = " + max_threads);
+        System.out.printf("%n%nmax_threads = " + max_threads + "%n");
         ExecutorService thread_pool = Executors.newFixedThreadPool(max_threads);
         CountDownLatch count_down_latch = new CountDownLatch(m);
         System.out.println("thread_pool status: " + thread_pool.toString());
@@ -2277,7 +2277,7 @@ public class Homoplasy_Counter {
     private void concurrecy_test() {
         int tot_num_replicates = 50;
         int max_threads = Runtime.getRuntime().availableProcessors();
-        System.out.println("\n\nmax_threads = " + max_threads);
+        System.out.printf("%n%nmax_threads = " + max_threads + "%n");
         ExecutorService thread_pool = Executors.newFixedThreadPool(max_threads);
         CountDownLatch count_down_latch = new CountDownLatch(tot_num_replicates);
 
@@ -2340,7 +2340,7 @@ public class Homoplasy_Counter {
      * @param all_resampled_homoplasy_counts
      */
     private void diagnostic_resampled_pheno_counts(ArrayList<ArrayList<int[]>> all_resampled_homoplasy_counts) {
-        System.out.println("\n\nDIAGNOSTIC:  Resampled case and control counts over all replicates");
+        System.out.printf("%n%nDIAGNOSTIC:  Resampled case and control counts over all replicates%n");
 
         int tot_resampled_cases_a1 = 0;
         int tot_resampled_controls_a1 = 0;
@@ -2385,7 +2385,7 @@ public class Homoplasy_Counter {
      * @param homoplasically_informative_sites
      */
     private void diagnostic_observed_case_control_ratio_homoplasic_mutations_only(ArrayList<Homoplasy_Events> homoplasically_informative_sites) {
-        System.out.println("\n\nDIAGNOSTIC:  Observed case and control counts over only homoplasic mutations");
+        System.out.printf("%n%nDIAGNOSTIC:  Observed case and control counts over only homoplasic mutations%n");
 
         int tot_obs_cases_a1 = 0;
         int tot_obs_controls_a1 = 0;
@@ -3142,7 +3142,7 @@ public class Homoplasy_Counter {
      */
     private void diagnostic_pointwise_resamplings(int segsite_index, ArrayList<Homoplasy_Events> homoplasically_informative_sites, phyC_Test_Statistic[] resampled_test_statistics,
                                                   ArrayList<int[]> pointwise_nulldist) {
-        System.out.println("\n\nDIAGNOSTIC:  point-wise resamplings:");
+        System.out.printf("%n%nDIAGNOSTIC:  point-wise resamplings:%n");
         System.out.println(Homoplasy_Events.COL_NAMES + "\t" + phyC_Test_Statistic.COL_NAMES);
         System.out.print(homoplasically_informative_sites.get(segsite_index).toString() + "\t" + resampled_test_statistics[segsite_index].toString());
         System.out.println("point-wise null dist at segsite_ID " + homoplasically_informative_sites.get(segsite_index).segsite_ID);
@@ -3159,7 +3159,7 @@ public class Homoplasy_Counter {
      * @param pointwise_nulldist
      */
     private void diagnostic_resampled_case_control_ratio_by_site(ArrayList<Homoplasy_Events> homoplasically_informative_sites, int segsite_index, ArrayList<int[]> pointwise_nulldist) {
-        System.out.println("\n\nDIAGNOSTIC:  case:control ratio by site");
+        System.out.printf("%n%nDIAGNOSTIC:  case:control ratio by site%n");
         System.out.println("point-wise null dist at segsite_ID " + homoplasically_informative_sites.get(segsite_index).segsite_ID);
         System.out.println(homoplasically_informative_sites.get(segsite_index));
 
@@ -4508,7 +4508,7 @@ public class Homoplasy_Counter {
                 System.out.println(MRCA_nodename);
             }
 
-            System.out.println("\n# homoplasy events for allele2 = " + allele2_MRCAs.size());
+            System.out.printf("%n# homoplasy events for allele2 = " + allele2_MRCAs.size() + "%n");
             System.out.println("allele2 homoplasy events (i.e. MRCA node names):");
             for (Map.Entry <String,HashSet<String>> mapping : allele2_MRCAs.entrySet()) {
                 String MRCA_nodename = mapping.getKey();
@@ -4978,7 +4978,7 @@ public class Homoplasy_Counter {
 
 
         private void output_resampled_pheno_counts() {
-            System.out.println("\n\nDIAGNOSTIC:  Resampled case and control counts over all replicates");
+            System.out.printf("%n%nDIAGNOSTIC:  Resampled case and control counts over all replicates%n");
 
             System.out.println("tot_resampled_cases_a1 = " + tot_resampled_cases_a1);
             System.out.println("tot_resampled_controls_a1 = " + tot_resampled_controls_a1);
