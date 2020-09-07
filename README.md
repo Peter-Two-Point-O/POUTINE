@@ -41,7 +41,15 @@ Included in this release is our *reference set* comprised of 124 mtb strains we 
 
 
 ## Current Major Bugs
-- Concurrency bug during resampling:  This bug only occurs sometimes.  If your test run doesn't run to completion (`CLEAN EXIT` should be the last line in the output file) and you see the program hang, simply kill the process and restart it for now.
+No major bugs!
+
+FIXED:  ~~- Concurrency bug during resampling:  This bug only occurs sometimes.  If your test run doesn't run to completion (`CLEAN EXIT` should be the last line in the output file) and you see the program hang, simply kill the process and restart it for now.~~
+
+Sometimes the program would lock up and freeze in perpetuity.  Based upon my output showing aspects of the thread pool, it looked like a few of the threads sometimes did not execute till completion, and thus the countdown latch is never decremented.  I thought this was weird because no stacktrace was ever seen in the output.  Best guess was that we have a race condition at the heart of the bug.
+
+I explicity attempted to catch all runtime errors inside each thread, and voila:  we get the classic NullPointerException during a run where the program locks up.  Turns out the bug is during read access of the hash table cache I used to optimize the running time (worked fine in single-threaded mode).  The cache is not thread-safe; specifically, the put() operation is not atomic in the sense that a key could be fully updated while the value is not fully updated, thus not satisfying the happens-before relation necessary for memory consistency between threads.  I'm guessing this memory inconsistency can happen either because the value actually hasn't been updated OR it has been updated but not flushed from the cpu memory (i.e. register or L1/L2 caches) into main memory for other threads to see, either way the value is null to other threads executing a get() on an identical key.
+
+The fix is to make only part of the put() operation atomic so that all reads from the cache has a proper happens-before relation with the writes to the cache on an identical key.  No need to synchronize and lock larger sections of code, thus keeping threads more active.
 
 
 
