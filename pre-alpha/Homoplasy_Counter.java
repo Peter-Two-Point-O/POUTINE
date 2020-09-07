@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -2140,7 +2141,7 @@ public class Homoplasy_Counter {
 
         double[] maxT_nulldist_a1_a2_combined = new double[m];  // combined a1 and a2 family-wise null dist
         Resampling_Space_Diagnostics r_space_diagnostics = new Resampling_Space_Diagnostics();
-        HashMap<String, Double> resampled_pvalue_cache = new HashMap<>();  // cache to replace redundant binom calls
+        ConcurrentHashMap<String, Double> resampled_pvalue_cache = new ConcurrentHashMap<>();  // thread-safe cache to replace redundant binom calls, curcially put() is atomic while get() is not synchronized
         ZonedDateTime start_of_resampling = ZonedDateTime.now();
         for (int curr_replicate = 0; curr_replicate < m; curr_replicate++) {  // PARALLEL OPTIMIZATION: each replicate is a thread
             thread_pool.submit(new Replicate(curr_replicate, count_down_latch,
@@ -2214,7 +2215,7 @@ public class Homoplasy_Counter {
         private HashMap<String, String> phenos;
         private double[] maxT_nulldist_a1_a2_combined;
         private Resampling_Space_Diagnostics r_space_diagnostics;
-        private HashMap<String, Double> resampled_pvalue_cache;
+        private ConcurrentHashMap<String, Double> resampled_pvalue_cache;
         private ZonedDateTime start_of_resampling;
         private BinomialTest binom_test;
         private double p_success_a1;
@@ -2223,7 +2224,7 @@ public class Homoplasy_Counter {
 
         public Replicate(int replicate_num, CountDownLatch count_down_latch,
                          ArrayList<Homoplasy_Events> homoplasically_informative_sites, HashMap<String, String> phenos,
-                         double[] maxT_nulldist_a1_a2_combined, Resampling_Space_Diagnostics r_space_diagnostics, HashMap<String, Double> resampled_pvalue_cache, ZonedDateTime start_of_resampling,
+                         double[] maxT_nulldist_a1_a2_combined, Resampling_Space_Diagnostics r_space_diagnostics, ConcurrentHashMap<String, Double> resampled_pvalue_cache, ZonedDateTime start_of_resampling,
                          BinomialTest binom_test, double p_success_a1, double p_success_a2, Binomial_Test_Stat[] resampled_test_statistics) {
             this.replicate_num = replicate_num;
             this.count_down_latch = count_down_latch;
@@ -2241,31 +2242,37 @@ public class Homoplasy_Counter {
 
         @Override
         public void run() {
-            HashMap<String, String> permuted_phenos = permute_phenos(phenos);
-            ArrayList<int[]> resampled_homoplasy_counts = count_homoplasies(homoplasically_informative_sites, permuted_phenos);
-            ArrayList[] replicate = calc_binomial_test_stats_memoization(homoplasically_informative_sites, resampled_homoplasy_counts, resampled_test_statistics, binom_test,
-                    p_success_a1, p_success_a2, resampled_pvalue_cache);
-            // COMBINED a1 and a2 FAMILY-WISE NULLDIST VERSION:
-            // first combine resampled pvalues from a1 and a2 into one full repicate of resampled pvalues
-            // NOTE:  I do it like this to keep more of the previous code the same, i.e. separate a1 and a2 null dists were coded first
-            replicate[0].addAll(replicate[1]);
-            ArrayList<Double> replicate_a1_and_a2 = replicate[0];
-            // identify the replicate maxT from pooled a1 and a2 resampled pvalues
-            double replicate_maxT = replicate_a1_and_a2.stream().mapToDouble(d -> d).min().getAsDouble();  // there should be no Double.NaNs in this collection
-            maxT_nulldist_a1_a2_combined[replicate_num] = replicate_maxT;
+            // DEBUG CONCURRENCY:  see if there is an error that the try/catch block can catch thus allowing for a stack trace
+            try {
+                HashMap<String, String> permuted_phenos = permute_phenos(phenos);
+                ArrayList<int[]> resampled_homoplasy_counts = count_homoplasies(homoplasically_informative_sites, permuted_phenos);
+                ArrayList[] replicate = calc_binomial_test_stats_memoization_concurrent(homoplasically_informative_sites, resampled_homoplasy_counts, resampled_test_statistics, binom_test,
+                                                                                        p_success_a1, p_success_a2, resampled_pvalue_cache);
+                // COMBINED a1 and a2 FAMILY-WISE NULLDIST VERSION:
+                // first combine resampled pvalues from a1 and a2 into one full repicate of resampled pvalues
+                // NOTE:  I do it like this to keep more of the previous code the same, i.e. separate a1 and a2 null dists were coded first
+                replicate[0].addAll(replicate[1]);
+                ArrayList<Double> replicate_a1_and_a2 = replicate[0];
+                // identify the replicate maxT from pooled a1 and a2 resampled pvalues
+                double replicate_maxT = replicate_a1_and_a2.stream().mapToDouble(d -> d).min().getAsDouble();  // there should be no Double.NaNs in this collection
+                maxT_nulldist_a1_a2_combined[replicate_num] = replicate_maxT;
 
-            r_space_diagnostics.tally_current_replicate(resampled_homoplasy_counts);
+                r_space_diagnostics.tally_current_replicate(resampled_homoplasy_counts);
 
-            // progress
-            if ((replicate_num % 50000) == 0) {  // TODO:  should probably change based upon the user-specified # replicates
-                System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount());
-            } else if (replicate_num == m - 1) { // last replicate
-                System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount() +
-                                   " <- end of resampling");
-            }
+                // progress
+                if ((replicate_num % 50000) == 0) {  // TODO:  should probably change based upon the user-specified # replicates
+                    System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount());
+                } else if (replicate_num == m - 1) { // last replicate
+                    System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount() +
+                            " <- end of resampling");
+                }
 
 //            System.out.println("replicate_num = " + replicate_num);
-            count_down_latch.countDown();
+                count_down_latch.countDown();
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.exit(-1);
+            }
         }
     }
 
@@ -3130,6 +3137,114 @@ public class Homoplasy_Counter {
 
         return new ArrayList[]{binom_test_stats_a1, binom_test_stats_a2};
     }
+
+
+
+    /**
+     * THIS VERSION USES THE OLD RESAMPLING SPACE (IE:  ALL MUTATIONS, INCLUDING NON-HOMOPLASIC MUTATIONS).
+     * THIS VERSION NOW ALSO IS OPTIMIZED USING MEMOIZATION of resampled pavlues.
+     *
+     * New association test stat:  binomial test
+     *
+     * For all sites in this current replicate:  r++ for the allele if . . . resampled binomial test pvalue is <= observed binomial test pvalue, else r is unchanged.
+     **
+     * homoplasy counts := int[4] := a1p1, a1p2, a2p1, a2p2 := {a1/case, a1/control}, {a2/case, a2/control}
+     *
+     * @param homoplasically_informative_sites
+     * @param resampled_homoplasy_counts
+     * @param resampled_test_statistics
+     * @param binom_test
+     * @param p_success_a1
+     * @param p_success_a2
+     * @param resampled_pvalues_cache
+     * @return ArrayList[0] := binom test pvalues for a1, ArrayList[1] := binom test pvalues for a2
+     */
+    private ArrayList[] calc_binomial_test_stats_memoization_concurrent(ArrayList<Homoplasy_Events> homoplasically_informative_sites, ArrayList<int[]> resampled_homoplasy_counts,
+                                                                        Binomial_Test_Stat[] resampled_test_statistics, BinomialTest binom_test, double p_success_a1, double p_success_a2,
+                                                                        ConcurrentHashMap<String, Double> resampled_pvalues_cache) {
+
+        ArrayList<Double> binom_test_stats_a1 = new ArrayList<>();  // only stores values for alleles that are in use, thus size of ArrayList will be <= # sites
+        ArrayList<Double> binom_test_stats_a2 = new ArrayList<>();
+
+        for (int s = 0; s < homoplasically_informative_sites.size(); s++) { // for each site
+            Homoplasy_Events curr_site = homoplasically_informative_sites.get(s);
+            Binomial_Test_Stat curr_test_stat = resampled_test_statistics[s];
+
+            int[] curr_site_resampled_counts = resampled_homoplasy_counts.get(s);
+
+            if (curr_site.a1_in_use) {
+                // calc binom test for resampled counts
+                int tot_num_trials = curr_site_resampled_counts[0] + curr_site_resampled_counts[1];  // tot # homoplasic mutations at this site for a1
+                int num_cases = curr_site_resampled_counts[0];
+
+                /*// REDUNDANT CALLS ============
+                String k = tot_num_trials + "-" + num_cases;
+                if (binom_test_calls.containsKey(k)) {
+                    binom_test_calls.put(k, binom_test_calls.get(k) + 1);
+                } else {
+                    binom_test_calls.put(k, 1);
+                }
+                tot_num_calls_by_int_counter++;
+                // REDUNDANT CALLS =============*/
+
+                // String experiment
+                String k = new StringBuilder().append(tot_num_trials).append("_").append(num_cases).toString();
+//                String k = tot_num_trials + "-" + num_cases;  // the 2 params that make a binom call unique
+                double resampled_binom_test_pvalue = 0;
+                if (resampled_pvalues_cache.containsKey(k)) {  // retrieve pvalue from cache or make call to Apache match library
+                    resampled_binom_test_pvalue = resampled_pvalues_cache.get(k);
+                } else {
+//                    Instant start_time = Instant.now();
+                    resampled_binom_test_pvalue = binom_test.binomialTest(tot_num_trials, num_cases, p_success_a1, TAIL_TYPE);
+//                    tot_duration_of_all_binom_calls_to_math_library = Duration.between(start_time, Instant.now()).plus(tot_duration_of_all_binom_calls_to_math_library);
+                    resampled_pvalues_cache.put(k, resampled_binom_test_pvalue);
+                }
+                binom_test_stats_a1.add(resampled_binom_test_pvalue);
+
+                // if resampled test stat equal or more extreme than obs test stat
+                if (resampled_binom_test_pvalue <= curr_test_stat.obs_binom_pvalue_a1) {
+                    curr_test_stat.r_a1++;
+                }
+            }
+
+            if (curr_site.a2_in_use) {
+                // calc binom test for resampled counts
+                int tot_num_trials = curr_site_resampled_counts[2] + curr_site_resampled_counts[3];  // tot # homoplasic mutations at this site for a1
+                int num_cases = curr_site_resampled_counts[2];
+
+                /*// REDUNDANT CALLS ==========
+                String k = tot_num_trials + "-" + num_cases;
+                if (binom_test_calls.containsKey(k)) {
+                    binom_test_calls.put(k, binom_test_calls.get(k) + 1);
+                } else {
+                    binom_test_calls.put(k, 1);
+                }
+                tot_num_calls_by_int_counter++;
+                // REDUNDANT CALLS ============*/
+
+                String k = new StringBuilder().append(tot_num_trials).append("_").append(num_cases).toString();
+//                String k = tot_num_trials + "-" + num_cases;
+                double resampled_binom_test_pvalue = 0;
+                if (resampled_pvalues_cache.containsKey(k)) {
+                    resampled_binom_test_pvalue = resampled_pvalues_cache.get(k);
+                } else {
+//                    Instant start_time = Instant.now();
+                    resampled_binom_test_pvalue = binom_test.binomialTest(tot_num_trials, num_cases, p_success_a2, TAIL_TYPE);
+//                    tot_duration_of_all_binom_calls_to_math_library = Duration.between(start_time, Instant.now()).plus(tot_duration_of_all_binom_calls_to_math_library);
+                    resampled_pvalues_cache.put(k, resampled_binom_test_pvalue);
+                }
+                binom_test_stats_a2.add(resampled_binom_test_pvalue);
+
+                // if resampled test stat equal or more extreme than obs test stat
+                if (resampled_binom_test_pvalue <= curr_test_stat.obs_binom_pvalue_a2) {
+                    curr_test_stat.r_a2++;
+                }
+            }
+        }
+
+        return new ArrayList[]{binom_test_stats_a1, binom_test_stats_a2};
+    }
+
 
 
     /**
