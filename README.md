@@ -13,9 +13,19 @@ This program requires: (links are provided if you don't already have it on your 
 
 
 ## Executing The Program
-For this pre-alpha release, a convenience homoplasy_counter.sh file is included to run the program.  Future versions will likely be a precompiled binary with full command-line switch options like any other Unix binary (e.g. less, top, etc).
+**UPDATE:  a new commandline interface is now implemented**
 
-From inside the pre-alpha/ directory, simply execute: `./homoplasy_counter.sh &> output_filename.out &`
+From inside the pre-alpha/ directory, execute: `./poutine.sh --help`
+
+As before, the reference set can be found in the reference_set/ directory for testing purposes.  A successful run of the reference set will end with the final line:  "CLEAN EXIT"
+
+Also as before, you can `&>` the program output into a flat file, and then run consume_results.sh to see the top hits (currently working on redoing the entire output so expect a new commandline grouping of output options very soon).
+
+Since we're in alpha mode, please try and break the program, including all sorts of commandline shenanigans! :sunglasses:  I don't think we'll plan on checking the formats of input files as that is a bridge too far.
+
+~~For this pre-alpha release, a convenience homoplasy_counter.sh file is included to run the program.  Future versions will likely be a precompiled binary with full command-line switch options like any other Unix binary (e.g. less, top, etc).~~
+
+~~From inside the pre-alpha/ directory, simply execute: `./homoplasy_counter.sh &> output_filename.out &`~~
 
 The `&>` redirects all terminal streams to the output file, while the final `&` backgrounds your process.  Both are optional.
 
@@ -56,13 +66,13 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 ## Recent Major Code Changes
 - Removed q values from the significance assessment.  Thus, all things R have been removed.  Main reason for this feature removal is because the resampling-derived FWER (maxT variant) is sufficient for users to sort and look for top hits (remember the philosophy here is "easier is better than better").  It's also more robust than anything in the FDR space in the sense that any filtering of segregating sites will alter the p value distribution that FDR-based schemes use to calculate the splines, and thus can dramatically alter the final q values.  So for example, I have currently set the program to ignore all sites with <= 3 homoplasic mutations as these will not show statistical significance (less sites mean faster run with lower memory).  The maxT p values are typically immune to changes from site filtering.  In a future release, when we are likely to add estimation statistics like a resampling-derived effect size + confidence intervals, we can reconsider if q values will benefit the user in any way.
 - Incorporated treetime for purposes of genotypic ancestral reconstruction using the default optimized joint probabilities method.
-- The program should be fully platform independent now.  Waiting for Windows users to get back to us to verify.  Tests on MacOS/Intel and Linux/Intel were successful.  NOTE:  Windows users should check out the code from the platform_independence branch.  Once we verify it works, we'll merge this branch back into master.
+- The program should be fully platform independent now.  ~~Waiting for Windows users to get back to us to verify.  Tests on MacOS/Intel and Linux/Intel were successful.  NOTE:  Windows users should check out the code from the platform_independence branch.  Once we verify it works, we'll merge this branch back into master.~~
+- Full command-line interface.  This will be our store-front! so will try to make this elegant and easy.
 
 
 
 ## Upcoming Major Code Changes
 - Incorporate vcf format.  This will also remove multi-fasta file and plink map file from standard input.
-- Full command-line interface.  This will be our store-front! so will try to make this elegant and easy.
 - Incorporate consume_results.sh code into main program along with other facilities to sort and pretty-format results.
 - Organize output (e.g. various results files, log file, etc)
 - Logging code to facilitate prepared files for users to send us for trouble-shooting.
