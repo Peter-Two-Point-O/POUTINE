@@ -23,6 +23,9 @@ Also as before, you can `&>` the program output into a flat file, and then run c
 
 Since we're in alpha mode, please try and break the program, including all sorts of commandline shenanigans! :sunglasses:  I don't think we'll plan on checking the formats of input files as that is a bridge too far.
 
+Since a picture is worth a thousands words:
+![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/tree/master/pre-alpha/images/poutine_cli_screenshot.png)
+
 ~~For this pre-alpha release, a convenience homoplasy_counter.sh file is included to run the program.  Future versions will likely be a precompiled binary with full command-line switch options like any other Unix binary (e.g. less, top, etc).~~
 
 ~~From inside the pre-alpha/ directory, simply execute: `./homoplasy_counter.sh &> output_filename.out &`~~
