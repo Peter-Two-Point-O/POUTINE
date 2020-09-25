@@ -17,11 +17,13 @@ This program requires: (links are provided if you don't already have it on your 
 
 From inside the pre-alpha/ directory, execute: `./poutine.sh --help`
 
-As before, the reference set can be found in the reference_set/ directory for testing purposes.  A successful run of the reference set will end with the final line:  "CLEAN EXIT"
+As before for testing purposes, the reference set can be found in the reference_set/ directory.  A successful run of the reference set will end with the final line:  "CLEAN EXIT"
 
 Also as before, you can `&>` the program output into a flat file, and then run consume_results.sh to see the top hits (currently working on redoing the entire output so expect a new commandline grouping of output options very soon).
 
-Since we're in alpha mode, please try and break the program, including all sorts of commandline shenanigans! :sunglasses:  I don't think we'll plan on checking the formats of input files as that is a bridge too far.
+Since we're in alpha mode, please try and break the program, including all sorts of commandline shenanigans! :sunglasses:
+
+I don't think we'll plan on checking the formats of input files as that is a bridge too far.
 
 Since a picture is worth a thousands words:
 ![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_cli_screenshot.png)
