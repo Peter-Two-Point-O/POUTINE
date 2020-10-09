@@ -13,41 +13,59 @@ This program requires: (links are provided if you don't already have it on your 
 
 
 ## Executing The Program
-**UPDATE:  a new commandline interface is now implemented**
+**UPDATE:  Program is now clean & user-friendly (too many changes to detail, so give it run and see for yourself)**
 
 From inside the pre-alpha/ directory, execute: `./poutine.sh --help`
 
 As before for testing purposes, the reference set can be found in the reference_set/ directory.  A successful run of the reference set will end with the final line:  "CLEAN EXIT"
 
-Also as before, you can `&>` the program output into a flat file, and then run consume_results.sh to see the top hits (currently working on redoing the entire output so expect a new commandline grouping of output options very soon).
+~~Also as before, you can `&>` the program output into a flat file, and then run consume_results.sh to see the top hits (currently working on redoing the entire output so expect a new commandline grouping of output options very soon).~~
 
 Since we're in alpha mode, please try and break the program, including all sorts of commandline shenanigans! :sunglasses:
 
-I don't think we'll plan on checking the formats of input files as that is a bridge too far.
+Code is now encouraging a new directory structure:
+
+```
+out_dir/
+|___ ancestral_reconstruction_dir/
+     |___ ancestral_sequences.fasta
+     |___ annotated_tree.nexus
+     |___ sequence_evolution_model.txt     
+|___ poutine_session_current_time.log (any runtime errors will be found in this file)
+|___ poutine_session_current_time.debug (temporary facility, feel free to use it as it gives a bunch of internal stats)
+|___ poutine_session_current_time.out (main results file)
+|___ poutine_session_current_time.out.sorted_by_a1_maxT (major allele associations across all sites sorted by maxT)
+|___ poutine_session_current_time.out.sorted_by_a2_maxT (minor allele associations across all sites sorted by maxT)
+```
+
+For convenience, you can view the results output files in pretty-format using the following Unix command:
+`column -ts "Ctrl-v <tab>" output_filename.out.sorted_by_a2_maxT | less -S`
+
+To set TAB as the delimiter, macOS and Linux systems usually want `Ctrl-v <tab>` which is a Ctrl-v followed immediately by the tab key.
 
 Since a picture is worth a thousands words:
-![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_cli_screenshot.png)
+![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_cli_screenshot_2.png)
+
+This is what a clean run should look like in the terminal with default settings:
+![Image of new console updates](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_console_screenshot.png)
 
 ~~For this pre-alpha release, a convenience homoplasy_counter.sh file is included to run the program.  Future versions will likely be a precompiled binary with full command-line switch options like any other Unix binary (e.g. less, top, etc).~~
 
 ~~From inside the pre-alpha/ directory, simply execute: `./homoplasy_counter.sh &> output_filename.out &`~~
 
-The `&>` redirects all terminal streams to the output file, while the final `&` backgrounds your process.  Both are optional.
+~~The `&>` redirects all terminal streams to the output file, while the final `&` backgrounds your process.  Both are optional.~~
 
-To get a sorted list of top hits, simply run: `consume_results.sh output_filename.out 0.05`
+~~To get a sorted list of top hits, simply run: `consume_results.sh output_filename.out 0.05`~~
 
-`0.05` is the maxT p value cut-off user chooses.  This is a family-wise error rate so 5% or 1% are classically reasonable.  The script will also output the following files:
+~~`0.05` is the maxT p value cut-off user chooses.  This is a family-wise error rate so 5% or 1% are classically reasonable.  The script will also output the following files:~~
 
-1)  `.all_associations`:  same as full homoplasy counter output file minus all the log information
-2)  `.a1_sorted`:  each row represents one a1 allele in sorted fashion (a1 subset from .all_associations)
-3)  `.a2_sorted`:  each row represents one a2 allele in sorted fashion (a2 subset from .all_associations)
-4)  `.a1_top_hits_maxT`:  a1 associations filtered by maxT pvalue
-5)  `.a2_top_hits_maxT`:  a2 associations filtered by maxT pvalue
+~~1)  `.all_associations`:  same as full homoplasy counter output file minus all the log information~~
+~~2)  `.a1_sorted`:  each row represents one a1 allele in sorted fashion (a1 subset from .all_associations)~~
+~~3)  `.a2_sorted`:  each row represents one a2 allele in sorted fashion (a2 subset from .all_associations)~~
+~~4)  `.a1_top_hits_maxT`:  a1 associations filtered by maxT pvalue~~
+~~5)  `.a2_top_hits_maxT`:  a2 associations filtered by maxT pvalue~~
 
-For convenience, you can view the top hits in pretty-format using the following Unix command:
-`column -ts "ctrl-v tab" output_filename.out.a2_top_hits_maxT | less -S`
 
-To set TAB as the delimiter, macOS and Linux systems usually want `ctrl-v tab` which is a ctrl-v followed immediately by the tab key.
 
 
 ## Reference Set
@@ -73,15 +91,15 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 - Incorporated treetime for purposes of genotypic ancestral reconstruction using the default optimized joint probabilities method.
 - The program should be fully platform independent now.  ~~Waiting for Windows users to get back to us to verify.  Tests on MacOS/Intel and Linux/Intel were successful.  NOTE:  Windows users should check out the code from the platform_independence branch.  Once we verify it works, we'll merge this branch back into master.~~
 - Full command-line interface.  This will be our store-front! so will try to make this elegant and easy.
+- Incorporate consume_results.sh code into main program along with other facilities to sort and pretty-format results.
+- Organize all program output (e.g. various results files, log file, debugging file, proper console messages, etc).
+- There are now a bounty of checks (e.g. malformed input file formats, etc) that allow the program to fail fast and meaningfully.  User is now prompted with console and log messages that provide either warnings and/or points them to further action.
+- All output (whether to console or file) is now pretty formatted and human understandable, so if there is anything you want to see changed, just let us know!
 
 
 
 ## Upcoming Major Code Changes
-- Incorporate vcf format.  This will also remove multi-fasta file and plink map file from standard input.
-- Incorporate consume_results.sh code into main program along with other facilities to sort and pretty-format results.
-- Organize output (e.g. various results files, log file, etc)
-- Logging code to facilitate prepared files for users to send us for trouble-shooting.
-- Final code cleanup (e.g. comments, refactoring, etc)
-- Deployment:  Likely to compile entire program (minus python component) into binaries, one for each platform.  This removes the java dependency, and users will simply run the program like any other binary.  Future work:  consider replacing python component to make this program completely self-contained; no installation, simply download the binary and run!
+- Incorporate vcf format (this will be another input option in addition to the current multi-fasta + plink map option)
+
 
 
