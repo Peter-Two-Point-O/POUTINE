@@ -11,14 +11,18 @@ import picocli.CommandLine.Model.*;
 //import static org.fusesource.jansi.Ansi.*;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+
+import static java.nio.file.StandardOpenOption.APPEND;
 
 
 /**
@@ -55,44 +59,46 @@ import java.util.stream.IntStream;
  * @author Peter E Chen
  * @version 1.0.0
  */
-@Command(name = "poutine", version = "%npoutine 1.0.0 (pre-alpha)%n", mixinStandardHelpOptions = true, usageHelpWidth = 200, sortOptions = false, headerHeading = "%n", optionListHeading = "%n", footerHeading = "%n")
+@Command(name = "poutine", version = "%npoutine 1.0.0 (pre-alpha)%n", mixinStandardHelpOptions = true, usageHelpWidth = 210, sortOptions = false, headerHeading = "%n", optionListHeading = "%n", footerHeading = "%n")
 public class Homoplasy_Counter implements Callable<Integer> {
     @Spec
     static CommandSpec spec;
 
     // current commandline options:
+
+    // TODO:  change all String filenames to File?
     @ArgGroup(exclusive = false, multiplicity = "1", validate = true)
     InputFiles inputFiles;
     static class InputFiles {
-        @ArgGroup(exclusive = true, multiplicity = "1", validate = true, heading = "@|bg(213) %ninput genotype file: vcf or fasta format%n|@")
+        @ArgGroup(exclusive = true, multiplicity = "1", validate = true, heading = "@|bg(213) %nInput genotype file: vcf or fasta format%n|@")
         Genotypes genotypes;
         static class Genotypes {
-            @Option(names = {"-v", "--vcf"}, description = "multi-sample vcf input file")
+            @Option(names = {"-v", "--vcf"}, description = "Multi-sample vcf input file")
             private String vcf_filename;
 
-            @Option(names = {"-f", "--fasta"}, description = "multi-fasta input file")
+            @Option(names = {"-f", "--fasta"}, description = "Multi-fasta input file")
             private String msa_fasta_filename;
         }
 
-        @ArgGroup(exclusive = false, multiplicity = "1", validate = true, heading = "@|bg(123) %nother input files%n|@")
+        @ArgGroup(exclusive = false, multiplicity = "1", validate = true, heading = "@|bg(123) %nOther input files%n|@")
         OtherInputFiles otherInputFiles;
         static class OtherInputFiles {
-            @Option(names = {"-p", "--phenos"}, description = "phenotype input file", required = true)
+            @Option(names = {"-p", "--phenos"}, description = "Phenotype input file", required = true)
             private String pheno_filename;
 
-            @Option(names = {"-t", "--tree"}, description = "newick input tree", required = true)
+            @Option(names = {"-t", "--tree"}, description = "Newick input tree", required = true)
             private String newick_filename;
 
-            @Option(names = {"-m", "--map"}, description = "plink map file", required = true)
+            @Option(names = {"-m", "--map"}, description = "Plink map file", required = true)
             private String map_filename;
         }
     }
 
-    @ArgGroup(validate = false, heading = "@|bg(222) %nalgorithm parameters%n|@")
+    @ArgGroup(validate = false, heading = "@|bg(222) %nAlgorithm parameters%n|@")
     AlgoParams algoParams;
     static class AlgoParams {
         private static int m = 100000; // default value
-        @Option(names = {"-r", "--replicates"}, paramLabel = "<# replicates>", description = "# replicates used for resampling (default: 100000)", required = false)
+        @Option(names = {"-r", "--replicates"}, paramLabel = "<# replicates>", description = "# Replicates used for resampling (default: 100000)", required = false)
         private void validate_and_set_replicates_option(int user_value) {
             if (user_value > 0)
                 m = user_value;
@@ -101,7 +107,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         }
 
         private static int min_hcount = 4;  // default value.  1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
-        @Option(names = {"-c", "--min_hcount"}, paramLabel = "<count>", description = "min # homoplasic mutations required at each segregating site (default: 4). This option is analogous to the common maf filter.", required = false)
+        @Option(names = {"-c", "--min_hcount"}, paramLabel = "<count>", description = "Min # homoplasic mutations required at each segregating site (default: 4). This option is analogous to the common maf filter.", required = false)
         private void validate_and_set_min_hcount_option(int user_value) {
             if (user_value >= 0)
                 min_hcount = user_value;
@@ -110,11 +116,11 @@ public class Homoplasy_Counter implements Callable<Integer> {
         }
     }
 
-    @ArgGroup(validate = false, heading = "@|bg(85) %nruntime settings%n|@")
+    @ArgGroup(validate = false, heading = "@|bg(85) %nRuntime options%n|@")
     RuntimeSettings runtimeSettings;
     static class RuntimeSettings {
         private static int num_threads = Runtime.getRuntime().availableProcessors();  // default value := max # logical processors available (# cpu cores and hyperthreading)
-        @Option(names = {"-T", "--threads"}, paramLabel = "<# threads>", description = "# threads used for parallel processing (default: max # logical processors)", required = false)
+        @Option(names = {"-T", "--threads"}, paramLabel = "<# threads>", description = "# Threads used for parallel processing (default: max # logical processors)", required = false)
         private void validate_and_set_thread_option(int user_value) {
             if (user_value > 0)
                 num_threads = user_value;
@@ -123,7 +129,41 @@ public class Homoplasy_Counter implements Callable<Integer> {
         }
     }
 
+    @ArgGroup(validate = false, heading = "@|bg(197) %nOutput files and options%n|@")
+    OutputOptions outputOptions = new OutputOptions();
+
+    static class OutputOptions {
+        @Option(names = {"-d", "--out-dir"}, description = "Output directory for all output files (default: poutine_session_current_time)", required = false)
+        private File output_dir;  // default is relative to the current dir
+
+        @Option(names = {"-o", "--out"}, description = "Output file (relative to --out-dir) containing association results (default: out-dir/poutine_session_current_time.out)", required = false)
+        private File output_file;
+        private File output_file_sorted_by_a1_maxT;
+        private File output_file_sorted_by_a2_maxT;
+        private BufferedWriter out;
+        private BufferedWriter out_sorted_by_a1_maxT;
+        private BufferedWriter out_sorted_by_a2_maxT;
+
+        @Option(names = {"-l", "--log"}, description = "Log file (relative to --out-dir) containing this session's log ouput and any runtime errors that may occur (default: out-dir/poutine_session_current_time.log)", required = false)
+        private File log_file;
+        private BufferedWriter log;
+
+        @Option(names = {"-a", "--anc-recon-out-dir"}, description = "Output directory (relative to --out-dir) for all files related to ancestral reconstruction (default: out-dir/ancestral_reconstruction_current_time)", required = false)
+        private File anc_recon_dir;  // default is a subdirectory of output_dirname
+
+        @Option(names = {"-s", "--timestamp"}, description = "Add current session's start timestamp to user-specified dir and filenames (default: no timestamp)", required = false)
+        private boolean timestamp = false;
+
+        @Option(names = {"-X", "--force-overwrite"}, description = "Allow overwriting of existing files having the same user-specified filenames (default: program safely exits if existing files detected)", required = false)
+        private boolean force_overwrite = false;
+
+        @Option(names = {"-D", "--debug"}, description = "Turns debug mode on: output all debugging information to debug file out-dir/output_filename.debug)", required = false)
+        private boolean DEBUG_MODE = false;
+        private BufferedWriter debug;
+    }
+
 // Remaining global variables:
+//
 //    private final String newick_filename;
 //    private final String nexus_filename;  // treetime's annotated nexus file containing tree with internal nodes labeled
 //    private final String ancestral_reconstruction_filename;  // treetime's fasta file containing ancestral genotypes
@@ -140,7 +180,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 //    private final String R_dir = "/Users/blame_monster/Research/Indie/Homoplasy_Counting/R_code/";  // dir that contains R code (hard-coded for local)
     private final String R_dir = "/home/blame_monster/Research/Homoplasy_Counting/R_Code/";  // hard-coded for Kimura for testing
     private final boolean EXTANT_NODES_ONLY = true;  // turns off ancestrally reconstructed phenotypes, ie only use leaves
-    private final String anc_recon_dir = "ancestral_reconstruction";  // path is relative to user's current working dir
+//    private final String anc_recon_dir = "ancestral_reconstruction";  // path is relative to user's current working dir
 
 //    private final double p_success = 0.56;  // mtb genome-wide homoplasic mutations only (derived from diagnostic code)
 //    private final double p_success = 0.38;  // mtb genome-wide all mutations 47 cases /(47 + 77 controls)
@@ -163,9 +203,10 @@ public class Homoplasy_Counter implements Callable<Integer> {
     private int m;  // # replicates (# perms)
 //    private final int min_hcount = 7;  // 1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
 
+    private boolean DEBUG_MODE;
+
     private final ZonedDateTime session_start_time = ZonedDateTime.now();
 
-    // TODO:  should these globals be final?
     private int tot_num_sample_cases;
     private int tot_num_sample_controls;
 
@@ -177,6 +218,18 @@ public class Homoplasy_Counter implements Callable<Integer> {
     public static void main(String[] args) {
         CommandLine cmdline = new CommandLine(new Homoplasy_Counter());
         cmdline.setUsageHelpLongOptionsMaxWidth(40);
+
+        // registering a custom commandline exception handler to get rid of all ANSI escape sequences when outputting uncaught runtime exception; this is useful because program redirects these types of exceptions to file.
+//        IParameterExceptionHandler exception_handler = cmdline.getParameterExceptionHandler();
+//        cmdline.setParameterExceptionHandler((param_exception, cmdline_args) ->
+//                {
+//                    System.setProperty("picocli.ansi", "false");
+//                    return exception_handler.handleParseException(param_exception, cmdline_args);
+//                }
+//        );
+//        ColorScheme color_scheme = cmdline.getColorScheme();
+//        System.out.println("color_scheme = " + color_scheme);
+
         int exitCode = cmdline.execute(args);
         System.exit(exitCode);
     }
@@ -184,10 +237,18 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        further_validate_cmdline_args();
 
-        // PLINK .map file that contains physical positions in the order of the ped file used to create input files for CFML
-        int[] physical_poss = get_physical_positions();
+        more_cmdline_magic();
+        log_cmdline_global_vars();
+        validate_input_newick_format();
+        System.out.printf(Ansi.AUTO.string("@|fg(213) %nStarting poutine session: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")) + "%n|@"));
+
+        // WARNING:  warn user if user-specified # replicates is potentially too low to properly estimate statistical significance
+        if (m < 10000) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nWarning: # replicates has been set to a potentially low value of %d. Please consider a higher value (the default is 100000 replicates).%n|@"), m);
+            outputOptions.log.write(String.format("%nWarning: # replicates has been set to a potentially low value of " + m + ".  Please consider a higher value (the default is 100000 replicates).%n"));
+            outputOptions.log.flush();
+        }
 
         /*
          * ancestral recon pseudocode:
@@ -210,14 +271,18 @@ public class Homoplasy_Counter implements Callable<Integer> {
         // read in ancestral genotypes
         HashMap<String, char[]> seg_sites = build_seg_sites();
         // output # segregating sites (map file and anc recon fasta file)
-        System.out.println("physical_poss.length = " + physical_poss.length);
+//        System.out.println("physical_poss.length = " + physical_poss.length);
         // TODO:  rename build_seg_sites() -> read_ancestral_seqs()?  rename seg_sites -> ancestral_seqs?
+
+        // PLINK .map file that contains physical positions in the order of the ped file used to create input files for CFML
+        int[] physical_poss = get_physical_positions();
 
         // TODO:  refactor all ArrayLists into arrays[] since I know the sizes ahead of time?
 
         HashMap<String, String> phenos = read_phenos();  // only extant phenotypes
 
-        log_session_info();
+        // no longer used since creating an official log file
+//        log_session_info();
 
         // homoplasy counts
         ArrayList<Homoplasy_Events> all_events = count_all_homoplasy_events(tree, seg_sites, physical_poss);
@@ -231,11 +296,53 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
 
+    /**
+     *  This method checks the newick format of the input newick tree file.
+     */
+    private void validate_input_newick_format() {
+
+        String newick = null;
+        try (BufferedReader br = new BufferedReader(new FileReader(inputFiles.otherInputFiles.newick_filename))) {
+            StringBuilder sb = new StringBuilder();
+            String currline;
+            while ((currline = br.readLine()) != null) {
+                sb.append(currline);
+            }
+            newick = sb.toString();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while reading the input newick tree file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
+
+        try {
+            NewickTree tree = null;
+            StringReader sr = new StringReader(newick);
+            NewickTreeTokenizer tokenizer = new NewickTreeTokenizer(sr);
+            NewickTreeReader tree_reader = new NewickTreeReader(tokenizer);
+            tree = tree_reader.readTree();
+        } catch (DataFormatException | IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while parsing the input newick tree (this is likely due to a malformed newick file).  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
+    }
+
+
+
     /*
      * At some point, all commandline validation checks may go here to keep the code tidy.
      */
-    private void further_validate_cmdline_args() {
-        m = AlgoParams.m;  // not the most elegant (will do for now), but i want to keep the m variable the same as before (before exposing the parameter on the commandline) instead of refactoring to AlgoParams.m all over the place.
+    private void more_cmdline_magic() {
+        m = AlgoParams.m;  // not the most elegant (keep for now), but i want to keep the m variable the same as before (before exposing the parameter on the commandline) instead of refactoring to AlgoParams.m all over the place.
+        DEBUG_MODE = outputOptions.DEBUG_MODE;
+
+        // input files: ==========================================
+        if ((inputFiles.genotypes.msa_fasta_filename != null) && (!new File(inputFiles.genotypes.msa_fasta_filename).exists()))  // user has selected --fasta option AND user-specified fasta file does not exist
+            throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' for option '--fasta' cannot be found.  Please make sure the correct path and file name are specified.", inputFiles.genotypes.msa_fasta_filename));
+
+        if ((inputFiles.genotypes.vcf_filename != null) && (!new File(inputFiles.genotypes.vcf_filename).exists()))  // user has selected --vcf option AND user-specified vcf file does not exist
+            throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' for option '--vcf' cannot be found.  Please make sure the correct path and file name are specified.", inputFiles.genotypes.vcf_filename));
 
         if (!new File(inputFiles.otherInputFiles.pheno_filename).exists())
             throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' for option '--phenos' cannot be found.  Please make sure the correct path and file name are specified.", inputFiles.otherInputFiles.pheno_filename));
@@ -245,6 +352,194 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         if (!new File(inputFiles.otherInputFiles.map_filename).exists())
             throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' for option '--map' cannot be found.  Please make sure the correct path and file name are specified.", inputFiles.otherInputFiles.map_filename));
+
+        // output:
+        final String basename = "poutine_session_";
+        final String curr_time = session_start_time.format(DateTimeFormatter.ofPattern("YYYY-MM-dd_HH'h'-mm'm'-ss's'"));
+
+        // output dirs: ===========================================
+        outputOptions.output_dir = get_validated_toplevel_path(outputOptions.output_dir, basename + curr_time, curr_time);
+        outputOptions.output_dir.mkdir();  // create dir now that it has passed all checks (eg: dir does not exist yet or --force-overwrite is specified by user)
+
+        outputOptions.anc_recon_dir = get_validated_relative_path(outputOptions.output_dir, outputOptions.anc_recon_dir, outputOptions.output_dir + File.separator + "ancestral_reconstruction_" + curr_time, curr_time);
+
+        // output files: ===========================================
+        outputOptions.output_file = get_validated_relative_path(outputOptions.output_dir, outputOptions.output_file, outputOptions.output_dir + File.separator + basename + curr_time + ".out", curr_time);
+        outputOptions.output_file_sorted_by_a2_maxT = new File(outputOptions.output_file.getAbsolutePath() + ".sorted_by_a2_maxT");
+        outputOptions.output_file_sorted_by_a1_maxT = new File(outputOptions.output_file.getAbsolutePath() + ".sorted_by_a1_maxT");
+        try {
+            outputOptions.out = new BufferedWriter(new FileWriter(outputOptions.output_file));
+            outputOptions.out_sorted_by_a2_maxT = new BufferedWriter(new FileWriter(outputOptions.output_file_sorted_by_a2_maxT));
+            outputOptions.out_sorted_by_a1_maxT = new BufferedWriter(new FileWriter(outputOptions.output_file_sorted_by_a1_maxT));
+        } catch (IOException ioe) {
+            throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' for option '--out' is not a valid file.  Please enter a valid filename.", outputOptions.output_file.toString()));
+        }
+
+        outputOptions.log_file = get_validated_relative_path(outputOptions.output_dir, outputOptions.log_file, outputOptions.output_dir + File.separator + basename + curr_time + ".log", curr_time);
+        try {
+            outputOptions.log = new BufferedWriter(new FileWriter(outputOptions.log_file));
+
+            // set all stack traces to be sent to log file
+            // properly appends to file and autoflushes to make sure in the event of a runtime error all info is written out before program execution ends
+            System.setErr(new PrintStream(Files.newOutputStream(outputOptions.log_file.toPath(), APPEND), true));
+        } catch (IOException e) {
+            throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' for option '--log' is not a valid file.  Please enter a valid filename.", outputOptions.log_file.toString()));
+        }
+
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug = new BufferedWriter(new FileWriter(outputOptions.output_dir + File.separator + basename + curr_time + ".debug"));
+                outputOptions.debug.write("poutine session start time: " + session_start_time);
+                outputOptions.debug.newLine();
+                outputOptions.debug.flush();  // since in DEBUG mode, I want to capture everything in the buffer immediately in case of early program termination
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the debug file. Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+    }
+
+
+
+    /**
+     * This method is used to set a directory path.  Top-level meaning that this allows the user to set a dir anywhere on their filesystem.
+     * This method also checks the following:
+     *      - is the default pathname needed?  (ie poutine_session_current_time)
+     *      - is --timestamp option in use?
+     *      - is --force-overwrite option in use?
+     *
+     * @param dir
+     * @param default_pathname
+     * @param curr_time
+     * @return dir is a top-level output dir either specified by the user on the commandline or is set to the default:  poutine_session_current_time (relative to user's current working directory)
+     */
+    private File get_validated_toplevel_path(File dir, String default_pathname, String curr_time) {
+
+        // set default if no user-specified output file
+        if (dir == null) // if no user-specified output file, set to default file
+            dir = new File(default_pathname);
+        else if (outputOptions.timestamp) // else if user has specified output file AND specified option to add timestamp to this filename
+            dir = new File(dir.getPath() + "." + curr_time);
+
+        // check if the file or dir exists, clean exit if so (unless --force-overwrite is specified by user)
+        if (dir.exists() && !outputOptions.force_overwrite)
+            throw new ParameterException(spec.commandLine(), String.format("%nDirectory '%s' already exists.  Use --force-overwrite option to use existing directory.", dir.toString()));
+
+        return dir;
+    }
+
+
+    /**
+     * This method is used to set a relative path.  Relative meaning that the returned path is always relative to the top-level output dir.  This allows the program to enforce a directory structure to contain
+     * all output files.
+     * This method also checks the following:
+     *      - is the default pathname needed?  (ie poutine_session_current_time)
+     *      - is --timestamp option in use?
+     *      - is --force-overwrite option in use?
+     *
+     * @param output_dir
+     * @param file
+     * @param default_pathname
+     * @param curr_time
+     * @return file is a file relative to the top-level output dir
+     */
+    private File get_validated_relative_path(File output_dir, File file, String default_pathname, String curr_time) {
+
+//        if (output_dir == null)
+
+        // set default if no user-specified output file
+        if (file == null) // if no user-specified output file, set to default file
+            file = new File(default_pathname);
+        else if (outputOptions.timestamp) // else if user has specified output file AND specified option to add timestamp to this filename
+            file = new File(output_dir + File.separator + file.getName() + "." + curr_time);
+        else
+            file = new File(output_dir + File.separator + file.getName());  // else simply place user's custom file inside output dir
+
+        // check if the file or dir exists, clean exit if so (unless --force-overwrite is specified by user).
+        if (file.exists() && !outputOptions.force_overwrite)
+            throw new ParameterException(spec.commandLine(), String.format("%nFile '%s' already exists.  Use --force-overwrite option to overwrite existing file.", file.toString()));
+
+        return file;
+    }
+
+
+
+    /*
+     * This method kicks off the program log with the first entry + all command line options (including default values used).
+     */
+    private void log_cmdline_global_vars() {
+
+        BufferedWriter log = outputOptions.log;
+
+        try {
+            log.write("poutine session start time: " + session_start_time);
+            log.newLine();
+            log.newLine();
+
+            log.write("Command line options used:");
+            log.newLine();
+
+            // input files:
+            // genotypes
+            log.write("genotype file: " + inputFiles.genotypes.msa_fasta_filename);
+            log.newLine();
+
+            // phenos
+            log.write("phenotype file: " + inputFiles.otherInputFiles.pheno_filename);
+            log.newLine();
+
+            // tree
+            log.write("tree file: " + inputFiles.otherInputFiles.newick_filename);
+            log.newLine();
+
+            // plink map file
+            log.write("plink map file: " + inputFiles.otherInputFiles.map_filename);
+            log.newLine();
+
+            // # replicates/permutations (m)
+            log.write("# replicates: " + AlgoParams.m);
+            log.newLine();
+
+            // min_hcount
+            log.write("min # homoplasic mutations required at each segregating site: " + AlgoParams.min_hcount);
+            log.newLine();
+
+            // # threads
+            log.write("# threads used: " + RuntimeSettings.num_threads);
+            log.newLine();
+
+            // output dir
+            log.write("ouput directory for all files: " + outputOptions.output_dir.getAbsolutePath());
+            log.newLine();
+
+            // out files
+            log.write("output files: " + outputOptions.output_file.getAbsolutePath() + ", " + outputOptions.output_file_sorted_by_a1_maxT.getAbsolutePath() + ", " + outputOptions.output_file_sorted_by_a2_maxT.getAbsolutePath());
+            log.newLine();
+
+            // log file
+            log.write("ancestral reconstruction output directory: " + outputOptions.anc_recon_dir.getAbsolutePath());
+            log.newLine();
+
+            // timestamp
+            log.write("Is --timestamp option in use?: " + outputOptions.timestamp);
+            log.newLine();
+
+            // force-overwrite
+            log.write("Is --force-overwrite option in use?: " + outputOptions.force_overwrite);
+            log.newLine();
+
+            // debug mode
+            log.write("DEBUG MODE: " + outputOptions.DEBUG_MODE);
+            log.newLine();
+
+            // flush buffer to capture this info in case of early program termination
+            log.flush();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the log file. Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);  // TODO:  settle on a set of exit codes and document this
+        }
     }
 
 
@@ -349,27 +644,45 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * This method . . .
      */
     private void ancestral_reconstruction() {
-        // treetime ancestral --aln (user-specified msa fasta) --tree (user-specified newick) --outdir ancestral_reconstruction --gtr infer
-//        ProcessBuilder pb = new ProcessBuilder("treetime_no_command_available", "ancestral", "--aln", msa_fasta_filename, "--tree", user_input_newick_filename, "--outdir", anc_recon_dir, "--gtr", "infer");
-        ProcessBuilder pb = new ProcessBuilder("treetime", "ancestral", "--aln", inputFiles.genotypes.msa_fasta_filename, "--tree", inputFiles.otherInputFiles.newick_filename, "--outdir", anc_recon_dir, "--gtr", "infer");
-        // TODO:  perhaps take a less aggressive dir creation stance:  check for existing dir, ask user for dir name?
 
-        // DEBUG
-//        pb = pb.inheritIO();
-        System.out.println("pb.command() = " + pb.command());
-        System.out.println("pb.environment() = " + pb.environment());
+        System.out.printf(Ansi.AUTO.string("@|fg(123) %nExecuting ancestral reconstruction . . . |@"));
 
         try {
-            System.out.println("\nexecuting ancestral reconstruction . . .");
+            // treetime ancestral --aln (user-specified msa fasta) --tree (user-specified newick) --outdir ancestral_reconstruction --gtr infer
+//        ProcessBuilder pb = new ProcessBuilder("treetime_no_command_available", "ancestral", "--aln", msa_fasta_filename, "--tree", user_input_newick_filename, "--outdir", anc_recon_dir, "--gtr", "infer");
+            ProcessBuilder pb = new ProcessBuilder("treetime", "ancestral", "--aln", inputFiles.genotypes.msa_fasta_filename, "--tree", inputFiles.otherInputFiles.newick_filename, "--outdir", outputOptions.anc_recon_dir.getPath(), "--gtr", "infer");
+
+            // DEBUG
+//        pb = pb.inheritIO();
+//        System.out.println("pb.command() = " + pb.command());
+//        System.out.println("pb.environment() = " + pb.environment());
+
+            outputOptions.log.write(String.format("%ntreetime command: " + pb.command() + "%n"));
+            outputOptions.log.flush();
+
             Process anc_recon_process = pb.start();
             anc_recon_process.waitFor();
-            System.out.print("process finished with exit value = ");
-            System.out.println(anc_recon_process.exitValue());
+
+            if (DEBUG_MODE) {
+//                System.out.print("process finished with exit value = ");
+//                System.out.println(anc_recon_process.exitValue());
+                outputOptions.debug.write("\nancestral reconstruction process finished with exit value = " + anc_recon_process.exitValue() + "\n");
+                outputOptions.debug.flush();
+            }
+
+            // check to make sure that treetime completed without any errors, if no then fail fast to allow user to diagnose problem
+            if (anc_recon_process.exitValue() != 0) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred during ancestral reconstruction (this is likely due to malformed input genotype and/or newick file formats).  You may try running treetime separately to better diagnose the treetime error.%n|@"));
+                System.exit(-1);
+            }
         } catch (IOException | InterruptedException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred during ancestral reconstruction. Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
         }
-        System.out.println("exiting ancestral_reconstruction()");
+
+//        System.out.println("exiting ancestral_reconstruction()");
+        System.out.printf("reconstruction complete.%n");
     }
 
 
@@ -391,8 +704,11 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         String newick = null;
 
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(anc_recon_dir + File.separator + "annotated_tree.nexus"));
+        try (BufferedReader br = new BufferedReader(new FileReader(outputOptions.anc_recon_dir + File.separator + "annotated_tree.nexus"))) {
+            // moved BufferedReader into try-with-resources statement above
+//            BufferedReader br = new BufferedReader(new FileReader(anc_recon_dir + File.separator + "annotated_tree.nexus"));
+//            BufferedReader br = new BufferedReader(new FileReader(outputOptions.anc_recon_dir + File.separator + "annotated_tree.nexus"));
+
             String currline;
             while (!(currline = br.readLine()).equalsIgnoreCase("Begin Trees;")) {
             }
@@ -415,6 +731,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
             newick = newick_line.toString();
         } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while processing the nexus file in the ancestral reconstruction directory. Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
         }
@@ -503,14 +820,39 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
     private void end_session() {
         ZonedDateTime session_end_time = ZonedDateTime.now();
-        System.out.println("session end time:  " + session_end_time);
-        System.out.println("time elapsed = " + Duration.between(session_start_time, session_end_time));
-        System.out.println("CLEAN EXIT");
+        Duration diff = Duration.between(session_start_time, session_end_time);
+        String diff_pretty = String.format("%dh %02dm %02ds", diff.toHours(), diff.toMinutesPart(), diff.toSecondsPart());
+
+        try {
+            outputOptions.out.close();
+            outputOptions.out_sorted_by_a1_maxT.close();
+            outputOptions.out_sorted_by_a2_maxT.close();
+
+            outputOptions.log.write(String.format("%nEnding poutine session: " + session_end_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")) + "%n"));
+            outputOptions.log.write(String.format("Wall clock time elapsed = " + diff_pretty + "%n"));
+            outputOptions.log.write(String.format("CLEAN EXIT%n"));
+            outputOptions.log.close();
+
+            if (DEBUG_MODE) {
+                outputOptions.debug.write(String.format("%nEnding poutine session: " + session_end_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")) + "%n"));
+                outputOptions.debug.write(String.format("Wall clock time elapsed = " + diff_pretty + "%n"));
+                outputOptions.debug.write(String.format("CLEAN EXIT%n"));
+                outputOptions.debug.close();
+            }
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the log file. Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
+
+        System.out.printf(Ansi.AUTO.string("@|fg(213) %nEnding poutine session: " + session_end_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")) + "%n|@"));
+        System.out.printf(Ansi.AUTO.string("@|fg(123) Wall clock time elapsed = " + diff_pretty + "%n|@"));
+        System.out.printf(Ansi.AUTO.string("@|bold,blink,fg(197) CLEAN EXIT%n|@"));
     }
 
 
     /**
-     * I anticipate outputting a log file for each run a user makes.  This helps keep track of things like # perms, phenotypes, sample size, etc
+     * Outputs variables that helps to understand and debug the program
      */
     private void log_session_info() {
         // TEST:  jansi library
@@ -628,24 +970,28 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * Build a tree data structure from newick grammar
      */
     private NewickTree build_tree(String newick) {
+
         NewickTree tree = null;
-        StringReader sr = new StringReader(newick);
-        NewickTreeTokenizer tokenizer = new NewickTreeTokenizer(sr);
-        NewickTreeReader tree_reader = new NewickTreeReader(tokenizer);
 
         try {
+            StringReader sr = new StringReader(newick);
+            NewickTreeTokenizer tokenizer = new NewickTreeTokenizer(sr);
+            NewickTreeReader tree_reader = new NewickTreeReader(tokenizer);
             tree = tree_reader.readTree();
+
+            outputOptions.log.write(String.format("%ntree file: # of leaves = " + tree.getLeafNodes().size() + "%n"));
+            outputOptions.log.flush();
         } catch (IOException | DataFormatException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while processing the input newick tree. Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
         }
 
-        // TODO:  refactor into log code
-        System.out.println("phylogeny:  ");
-        System.out.println("# of leaves = " + tree.getLeafNodes().size());
+//        System.out.println("phylogeny:  ");
+//        System.out.println("# of leaves = " + tree.getLeafNodes().size());
 //        int num_children_of_rootnode = tree.getRoot().getChildrenCount();
 //        System.out.println("num_children_of_rootnode = " + num_children_of_rootnode);
-        System.out.println();
+//        System.out.println();
 
         return tree;
     }
@@ -687,7 +1033,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * may vary according to PLINK usage)
      */
     private int[] get_physical_positions() {
-        ArrayList<Integer> poss = new ArrayList<>();  // TODO: benefit from data structures in Google Guava or Apache? (instead of unboxing below)
+        ArrayList<Integer> poss = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new FileReader(inputFiles.otherInputFiles.map_filename))) {
             String currline;
@@ -696,13 +1042,22 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 int p = Integer.parseInt(cols[cols.length - 1]);
                 poss.add(p);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        } catch (IOException e) {
+
+            outputOptions.log.write(String.format("%nplink map file: # segregating sites = " + poss.size() + "%n"));
+            outputOptions.log.flush();
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//            System.exit(-1);
+        } catch (Exception e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while reading the map file (this is likely due to a malformed map file). Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
         }
+//        catch (NumberFormatException nfe) {
+//            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while parsing the map file (this is likely due to a malformed map file). Please see the stack trace in the log file for more information on this error.%n|@"));
+//            nfe.printStackTrace();
+//            System.exit(-1);
+//        }
 
         return poss.stream().mapToInt(i -> i).toArray();
     }
@@ -717,16 +1072,21 @@ public class Homoplasy_Counter implements Callable<Integer> {
 //        ArrayList<String> node_names = new ArrayList<>();
 //        ArrayList<char[]> snp_sets = new ArrayList<>();
 
-        Fasta_Manager multi_fasta_file = new Fasta_Manager(anc_recon_dir + File.separator + "ancestral_sequences.fasta");
-        Fasta_Record curr_record;
-        while ((curr_record = multi_fasta_file.next()) != null) {
-            String node_name = curr_record.getHeader();
-            char[] seq = curr_record.getSequence().toCharArray();
-            seg_sites.put(node_name, seq);
+        try {
+            int num_segsites_detected = -1;
 
-            // DEBUG
-//            System.out.println(node_name + "\t" + seq.length);
-        }
+    //        Fasta_Manager multi_fasta_file = new Fasta_Manager(anc_recon_dir + File.separator + "ancestral_sequences.fasta");
+            Fasta_Manager multi_fasta_file = new Fasta_Manager(outputOptions.anc_recon_dir + File.separator + "ancestral_sequences.fasta");
+            Fasta_Record curr_record;
+            while ((curr_record = multi_fasta_file.next()) != null) {
+                String node_name = curr_record.getHeader();
+                char[] seq = curr_record.getSequence().toCharArray();
+                seg_sites.put(node_name, seq);
+
+                num_segsites_detected = seq.length;  // TODO:  check to make sure every single fasta seq has the same # sites
+                // DEBUG
+    //            System.out.println(node_name + "\t" + seq.length);
+            }
 
         /*// replace this section with code from my bioinformatics library to process fasta files: =======================================
         try (BufferedReader br = new BufferedReader(new FileReader(ancestral_reconstruction_filename))) {
@@ -748,6 +1108,15 @@ public class Homoplasy_Counter implements Callable<Integer> {
         for (int i = 0; i < node_names.size(); i++) {
             seg_sites.put(node_names.get(i), snp_sets.get(i));
         }  // ===========================================================================================================================*/
+
+//            outputOptions.log.write(String.format("%n# samples detected from input genotype file: " + seg_sites.size() + "%n"));
+            outputOptions.log.write(String.format("%ngenotype file: # segregating sites in each sample = " + num_segsites_detected + "%n"));
+            outputOptions.log.flush();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while processing the ancestral_sequences.fasta file in the ancestral reconstruction directory. Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
         return seg_sites;
     }
@@ -847,6 +1216,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * Process 1 seg site at a time (i.e. count homoplasy events for 1 seg site at a time).
      */
     private ArrayList<Homoplasy_Events> count_all_homoplasy_events(NewickTree tree, HashMap<String, char[]> seg_sites, int[] physical_poss) {
+
+        System.out.printf(Ansi.AUTO.string("@|fg(222) %nCounting all homoplasy events . . . |@"));
+
         int num_non_biallelic_sites = 0;
         int num_monomorphic_sites = 0;
         ArrayList<Homoplasy_Events> all_events = new ArrayList<>();
@@ -885,8 +1257,22 @@ public class Homoplasy_Counter implements Callable<Integer> {
             }
         }
 
-        System.out.println("num_non_biallelic_sites = " + num_non_biallelic_sites);
-        System.out.println("num_monomorphic_sites = " + num_monomorphic_sites);
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("\ncount_all_homoplasy_events():\n");
+                outputOptions.debug.write("num_non_biallelic_sites = " + num_non_biallelic_sites + "\n");
+                outputOptions.debug.write("num_monomorphic_sites = " + num_monomorphic_sites + "\n");
+                outputOptions.debug.flush();
+//                System.out.println("num_non_biallelic_sites = " + num_non_biallelic_sites);
+//                System.out.println("num_monomorphic_sites = " + num_monomorphic_sites);
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing to the debug file. Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+
+        System.out.printf("homoplasy identification complete.%n");
 
         return all_events;
     }
@@ -1263,22 +1649,32 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 String pheno = pheno_cols[1];
                 phenos.put(strain_id, pheno);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while reading the phenotype file (this is likely due to a malformed phenotype file). Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
         }
 
         // Sanity check:
-        System.out.println("phenos.size() = " + phenos.size());
-        System.out.println("phenos = " + phenos);
+//        System.out.println("phenos.size() = " + phenos.size());
+//        System.out.println("phenos = " + phenos);
         // following only works if 0 := control and 1 := case
         int tot_num_cases = phenos.entrySet().stream().map(es -> Integer.parseInt(es.getValue())).mapToInt(i -> i).sum();
         int tot_num_controls = phenos.size() - tot_num_cases;
-        System.out.println("tot_num_cases = " + tot_num_cases + "\ttot_num_controls = " + tot_num_controls);
+//        System.out.println("tot_num_cases = " + tot_num_cases + "\ttot_num_controls = " + tot_num_controls);
 
         // set global variables
         tot_num_sample_cases = tot_num_cases;
         tot_num_sample_controls = tot_num_controls;
+
+        try {
+            outputOptions.log.write(String.format("%nphenotype file: cases = " + tot_num_cases + ", controls = " + tot_num_controls + ", total sample size = " + (tot_num_cases + tot_num_controls) + "%n"));
+            outputOptions.log.flush();  // damn I think the %n aren't triggering flushes
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing to the log file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
         return phenos;
     }
@@ -1400,17 +1796,78 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     private void output_significance_assessments_binom(ArrayList<Homoplasy_Events> homoplasically_informative_sites, Binomial_Test_Stat[] resampled_test_statistics) {
+
+        System.out.printf(Ansi.AUTO.string("@|fg(222) %nWriting results to file . . . |@"));
+
         // print out 1 result row per seg site:  segsite ID, pos, a1, a2, a1 homoplasy count, a2 homoplasy count, pvalue, or, ci, qvalue, local fdr
         // all_events and test_statistics should both be in the same order (i.e. ordered by segsite_ID)
         // sanity check (both sizes must be equal)
 //        System.out.println("(# homoplasically informative sites) homoplasically_informative_sites.size() = " + homoplasically_informative_sites.size());
-        System.out.println("resampled_test_statistics.length = " + resampled_test_statistics.length);
+//        System.out.println("resampled_test_statistics.length = " + resampled_test_statistics.length);
 
-        System.out.println(Homoplasy_Events.COL_NAMES + "\t" + Binomial_Test_Stat.COL_NAMES);  // header row
+//        System.out.println(Homoplasy_Events.COL_NAMES + "\t" + Binomial_Test_Stat.COL_NAMES);  // header row
+//
+//        for (int i = 0; i < homoplasically_informative_sites.size(); i++) {
+//            System.out.println(homoplasically_informative_sites.get(i) + "\t" + resampled_test_statistics[i]);
+//        }
 
-        for (int i = 0; i < homoplasically_informative_sites.size(); i++) {
-            System.out.println(homoplasically_informative_sites.get(i) + "\t" + resampled_test_statistics[i]);
+        try {
+            // .out file
+            outputOptions.out.write(Homoplasy_Events.COL_NAMES + "\t" + Binomial_Test_Stat.COL_NAMES);
+            outputOptions.out.newLine();
+
+            for (int i = 0; i < homoplasically_informative_sites.size(); i++) {
+                outputOptions.out.write(homoplasically_informative_sites.get(i) + "\t" + resampled_test_statistics[i]);
+                outputOptions.out.newLine();
+            }
+
+            // a1 and a2 out files sorted by maxT
+            outputOptions.out_sorted_by_a2_maxT.write(Homoplasy_Events.COL_NAMES + "\t" + Binomial_Test_Stat.COL_NAMES);
+            outputOptions.out_sorted_by_a2_maxT.newLine();
+            outputOptions.out_sorted_by_a1_maxT.write(Homoplasy_Events.COL_NAMES + "\t" + Binomial_Test_Stat.COL_NAMES);
+            outputOptions.out_sorted_by_a1_maxT.newLine();
+
+            // create composite objects to hold both halves of the row
+            Row[] rows = new Row[homoplasically_informative_sites.size()];
+            for (int i = 0; i < homoplasically_informative_sites.size(); i++)
+                rows[i] = new Row(homoplasically_informative_sites.get(i), resampled_test_statistics[i]);
+
+            // sort by a2 maxT
+            // sort using lambda to create Comparator Functional Interface :)
+            Arrays.parallelSort(rows, (a, b) -> {
+                return Double.compare(a.test_stat_for_one_site.familywise_pvalue_a2, b.test_stat_for_one_site.familywise_pvalue_a2);
+            });
+
+            // this is elegant as well!  Loving the static method Comparator.comparing().
+//            Arrays.parallelSort(rows, Comparator.comparing(Row::get_maxT));
+
+            // write out sorted a2 maxT
+            for (Row row : rows) {
+                if (!Double.isNaN(row.test_stat_for_one_site.familywise_pvalue_a2)) {  // don't print out rows where a2 maxT is NaN, i.e. only a1 maxT has a value (some sites have both a1 and a2 maxT if both are homoplasically informative alleles)
+                    outputOptions.out_sorted_by_a2_maxT.write(row.homoplasy_events_for_one_site.toString() + "\t" + row.test_stat_for_one_site.toString());
+                    outputOptions.out_sorted_by_a2_maxT.newLine();
+                }
+            }
+
+            // sort by a1 maxT
+            Arrays.parallelSort(rows, (a, b) -> {
+                return Double.compare(a.test_stat_for_one_site.familywise_pvalue_a1, b.test_stat_for_one_site.familywise_pvalue_a1);
+            });
+
+            // write out sorted a2 maxT
+            for (Row row : rows) {
+                if (!Double.isNaN(row.test_stat_for_one_site.familywise_pvalue_a1)) {  // don't print out rows where a1 maxT is NaN, i.e. only a2 maxT has a value (some sites have both a1 and a2 maxT if both are homoplasically informative alleles)
+                    outputOptions.out_sorted_by_a1_maxT.write(row.homoplasy_events_for_one_site.toString() + "\t" + row.test_stat_for_one_site.toString());
+                    outputOptions.out_sorted_by_a1_maxT.newLine();
+                }
+            }
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing results out to to file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
         }
+
+        System.out.printf("writing complete.%n");
     }
 
 
@@ -2222,8 +2679,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
         double background_p_success_given_both_alleles = calc_background_p_success();
         double p_success_a1 = background_p_success_given_both_alleles;
         double p_success_a2 = background_p_success_given_both_alleles;
-        System.out.println("p_success_a1 (used in all a1 binomial tests) = " + p_success_a1);
-        System.out.println("p_success_a2 (used in all a2 binomial tests) = " + p_success_a2);
 
         Binomial_Test_Stat[] resampled_test_statistics = new Binomial_Test_Stat[homoplasically_informative_sites.size()];
 
@@ -2254,26 +2709,40 @@ public class Homoplasy_Counter implements Callable<Integer> {
                         TAIL_TYPE);
             }
         }
-        // DIAGNOSTIC
-        diagnostic_observed_case_control_ratio_homoplasic_mutations_only(homoplasically_informative_sites);
+
+        if (DEBUG_MODE) {
+            diagnostic_observed_case_control_ratio_homoplasic_mutations_only(homoplasically_informative_sites);
+        }
 
 //        concurrecy_test();
 //        System.exit(-1);
 
         // START OF RESAMPLING -----------------------------------
-        System.out.println("RuntimeSettings.num_threads = " + RuntimeSettings.num_threads);  // testing user-specified # threads and default value
-        int max_threads = Runtime.getRuntime().availableProcessors();
-        System.out.printf("%n%nmax_threads = " + max_threads + "%n");
-//        ExecutorService thread_pool = Executors.newFixedThreadPool(max_threads);  // before picocli-based code
+        System.out.printf(Ansi.AUTO.string("@|fg(85) %nStarting resampling . . . %n|@"));
         ExecutorService thread_pool = Executors.newFixedThreadPool(RuntimeSettings.num_threads);
-
-        // did thread pool get set to user-specified num_thread or default value?
-        ThreadPoolExecutor thread_pool_executor = (ThreadPoolExecutor) thread_pool;  // needed an explicit typecast to get to the concrete implementation of ExecutorService so i can access the method below!
-        System.out.println("thread_pool_executor.getMaximumPoolSize() = " + thread_pool_executor.getMaximumPoolSize());
-
         CountDownLatch count_down_latch = new CountDownLatch(m);
-        System.out.println("thread_pool status: " + thread_pool.toString());
-        System.out.println("count_down_latch status: " + count_down_latch.toString());
+        System.out.printf("New thread pool created.  Status: " + get_thread_pool_status(thread_pool) + "%n");
+
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("\nresample_all_mutations_binom_test_combined_nulldists_memoization_concurrent():\n");
+                int max_threads = Runtime.getRuntime().availableProcessors();
+                outputOptions.debug.write("max_threads = " + max_threads + "\n"); // max logical processors
+                outputOptions.debug.write("RuntimeSettings.num_threads = " + RuntimeSettings.num_threads + "\n");  // testing user-specified # threads and default value
+
+                // did thread pool get set to user-specified num_thread or default value?
+                ThreadPoolExecutor thread_pool_executor = (ThreadPoolExecutor) thread_pool;  // needed an explicit typecast to get to the concrete implementation of ExecutorService so i can access the method below!
+                outputOptions.debug.write("\nBefore submitting replicates to thread pool:\n");
+                outputOptions.debug.write("thread_pool_executor.getMaximumPoolSize() = " + thread_pool_executor.getMaximumPoolSize() + "\n");
+                outputOptions.debug.write("thread_pool status: " + thread_pool.toString() + "\n");
+                outputOptions.debug.write("count_down_latch status: " + count_down_latch.toString() + "\n");
+                outputOptions.debug.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
 
         double[] maxT_nulldist_a1_a2_combined = new double[m];  // combined a1 and a2 family-wise null dist
         Resampling_Space_Diagnostics r_space_diagnostics = new Resampling_Space_Diagnostics();
@@ -2281,9 +2750,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
         ZonedDateTime start_of_resampling = ZonedDateTime.now();
         for (int curr_replicate = 0; curr_replicate < m; curr_replicate++) {  // PARALLEL OPTIMIZATION: each replicate is a thread
             thread_pool.submit(new Replicate(curr_replicate, count_down_latch,
-                    homoplasically_informative_sites, phenos,
-                    maxT_nulldist_a1_a2_combined, r_space_diagnostics, resampled_pvalue_cache, start_of_resampling,
-                    binom_test, p_success_a1, p_success_a2, resampled_test_statistics));
+                                             homoplasically_informative_sites, phenos,
+                                             maxT_nulldist_a1_a2_combined, r_space_diagnostics, resampled_pvalue_cache, start_of_resampling,
+                                             binom_test, p_success_a1, p_success_a2, resampled_test_statistics));
 
             /*// 1 complete resampling := 3 methods:
             HashMap<String, String> permuted_phenos = permute_phenos(phenos);
@@ -2310,18 +2779,44 @@ public class Homoplasy_Counter implements Callable<Integer> {
             }*/
         }  // END OF RESAMPLING ----------------------------------
         try {
-            System.out.println("count_down_latch.await() BEFORE call");
+//            System.out.println("count_down_latch.await() BEFORE call");
             count_down_latch.await();
-            System.out.println("count_down_latch.await() AFTER call");  // are all the replicate complete when this call is reached?
+//            System.out.println("count_down_latch.await() AFTER call");  // are all the replicates complete when this call is reached?
         } catch (InterruptedException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while working with the count down latch for multi-threading.  Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
         }
-        System.out.println("count down complete, count_down_latch.getCount() = " + count_down_latch.getCount());
-        System.out.println("thread_pool status: " + thread_pool.toString());
-        thread_pool.shutdown();
-        System.out.println("thread_pool is shut down, current status: " + thread_pool.toString());
 
+
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("\nCount down complete:\n");
+                outputOptions.debug.write("count_down_latch.getCount() = " + count_down_latch.getCount() + "\n");
+                outputOptions.debug.write("thread_pool status: " + thread_pool.toString() + "\n");
+                outputOptions.debug.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+
+        thread_pool.shutdown();
+
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("thread_pool is shutting down, current status: " + thread_pool.toString() + "\n");
+                outputOptions.debug.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+
+        System.out.printf("All replicates processed, thread pool is shutting down.  Status: " + get_thread_pool_status(thread_pool) + "%n");
+        System.out.printf("Resampling complete.%n");
 
         // REDUNDANT BINOM CALLS
 //        summarize_redundant_binom_calls();
@@ -2336,9 +2831,18 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         // DIAGNOSTIC:  show resampled case & control counts
 //        diagnostic_resampled_pheno_counts(all_resampled_homoplasy_counts);
-        r_space_diagnostics.output_resampled_pheno_counts();
+        if (DEBUG_MODE) {
+            r_space_diagnostics.output_resampled_pheno_counts();
+        }
 
         return resampled_test_statistics;
+    }
+
+
+
+    private String get_thread_pool_status(ExecutorService thread_pool) {
+        String raw = thread_pool.toString();
+        return raw.substring(raw.indexOf("["));
     }
 
 
@@ -2377,7 +2881,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         @Override
         public void run() {
-            // DEBUG CONCURRENCY:  see if there is an error that the try/catch block can catch thus allowing for a stack trace
             try {
                 HashMap<String, String> permuted_phenos = permute_phenos(phenos);
                 ArrayList<int[]> resampled_homoplasy_counts = count_homoplasies(homoplasically_informative_sites, permuted_phenos);
@@ -2394,17 +2897,28 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
                 r_space_diagnostics.tally_current_replicate(resampled_homoplasy_counts);
 
-                // progress
-                if ((replicate_num % 50000) == 0) {  // TODO:  should probably change based upon the user-specified # replicates
-                    System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount());
-                } else if (replicate_num == m - 1) { // last replicate
-                    System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount() +
-                            " <- end of resampling");
+                // progress indicator for resampling:
+                if (DEBUG_MODE) {
+                    if ((replicate_num % 10000) == 0)
+                        System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount());
+                    else if (replicate_num == m - 1) // last replicate
+                        System.out.println("replicate: " + replicate_num + "     time elapsed since start of resampling: " + Duration.between(start_of_resampling, ZonedDateTime.now()) + "  count_down_latch.getCount() = " + count_down_latch.getCount() + " <- end of resampling");
+                } else {  // else not in debug mode, thus user does not need as much info about the thread pool and count down latch. Also make replicate count 1-based (fun with modulo math!)
+                    if (((replicate_num + 1) % 10000) == 0) {
+                        Duration diff = Duration.between(start_of_resampling, ZonedDateTime.now());
+                        String diff_pretty = String.format("%dh %02dm %02ds", diff.toHours(), diff.toMinutesPart(), diff.toSecondsPart());
+                        System.out.printf("replicate: " + (replicate_num + 1) + "     (time elapsed since start of resampling: " + diff_pretty + ")%n");
+                    } else if ((replicate_num + 1) == m) { // last replicate
+                        Duration diff = Duration.between(start_of_resampling, ZonedDateTime.now());
+                        String diff_pretty = String.format("%dh %02dm %02ds", diff.toHours(), diff.toMinutesPart(), diff.toSecondsPart());
+                        System.out.printf("replicate: " + (replicate_num + 1) + "     (time elapsed since start of resampling: " + diff_pretty + ")%n");
+                    }
                 }
 
 //            System.out.println("replicate_num = " + replicate_num);
                 count_down_latch.countDown();
             } catch (Exception e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred in a thread during resampling.  Please see the stack trace in the log file for more information on this error.%n|@"));
                 e.printStackTrace();
                 System.exit(-1);
             }
@@ -2471,7 +2985,24 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * @return p_success | both alleles (based upon overall sample case:control)
      */
     private double calc_background_p_success() {
-        return (double) tot_num_sample_cases / (double) (tot_num_sample_cases + tot_num_sample_controls);
+
+        double background_p_success_given_both_alleles = (double) tot_num_sample_cases / (double) (tot_num_sample_cases + tot_num_sample_controls);
+
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("\ncalc_background_p_success():\n");
+                outputOptions.debug.write("background_p_success_given_both_alleles = " + background_p_success_given_both_alleles + "\n");
+                outputOptions.debug.flush();
+//                System.out.println("p_success_a2 (used in all a2 binomial tests) = " + p_success_a2);
+//                System.out.println("p_success_a1 (used in all a1 binomial tests) = " + p_success_a1);
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+
+        return background_p_success_given_both_alleles;
     }
 
 
@@ -2525,44 +3056,51 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * @param homoplasically_informative_sites
      */
     private void diagnostic_observed_case_control_ratio_homoplasic_mutations_only(ArrayList<Homoplasy_Events> homoplasically_informative_sites) {
-        System.out.printf("%n%nDIAGNOSTIC:  Observed case and control counts over only homoplasic mutations%n");
+        try {
+            outputOptions.debug.write("\ndiagnostic_observed_case_control_ratio_homoplasic_mutations_only():\n");
+            outputOptions.debug.write("Observed case and control counts over only homoplasic mutations:\n");
 
-        int tot_obs_cases_a1 = 0;
-        int tot_obs_controls_a1 = 0;
-        int tot_obs_cases_a2 = 0;
-        int tot_obs_controls_a2 = 0;
+            int tot_obs_cases_a1 = 0;
+            int tot_obs_controls_a1 = 0;
+            int tot_obs_cases_a2 = 0;
+            int tot_obs_controls_a2 = 0;
 
-        // NOTE:  noticed I'm not using a1.is_in_use boolean, thus this loop adds up ALL cases and controls regardless if the allele passes the min_hcount threshold
-        for (Homoplasy_Events site : homoplasically_informative_sites) {
-            tot_obs_cases_a1 += site.obs_counts[0];
-            tot_obs_controls_a1 += site.obs_counts[1];
+            // NOTE:  noticed I'm not using a1.is_in_use boolean, thus this loop adds up ALL cases and controls regardless if the allele passes the min_hcount threshold
+            for (Homoplasy_Events site : homoplasically_informative_sites) {
+                tot_obs_cases_a1 += site.obs_counts[0];
+                tot_obs_controls_a1 += site.obs_counts[1];
 
-            tot_obs_cases_a2 += site.obs_counts[2];
-            tot_obs_controls_a2 += site.obs_counts[3];
-        }
+                tot_obs_cases_a2 += site.obs_counts[2];
+                tot_obs_controls_a2 += site.obs_counts[3];
+            }
 
 //        System.out.println("p_success_a1 = " + p_success_a1);
 //        System.out.println("p_success_a2 = " + p_success_a2);
 
-        System.out.println("tot_obs_cases_a1 = " + tot_obs_cases_a1);
-        System.out.println("tot_obs_controls_a1 = " + tot_obs_controls_a1);
-        System.out.println("tot_obs_cases_a2 = " + tot_obs_cases_a2);
-        System.out.println("tot_obs_controls_a2 = " + tot_obs_controls_a2);
-        System.out.println("tot_observed_a1_counts = " + (tot_obs_cases_a1 + tot_obs_controls_a1));
-        System.out.println("tot_observed_a2_counts = " + (tot_obs_cases_a2 + tot_obs_controls_a2));
+            outputOptions.debug.write("tot_obs_cases_a1 = " + tot_obs_cases_a1 + "\n");
+            outputOptions.debug.write("tot_obs_controls_a1 = " + tot_obs_controls_a1 + "\n");
+            outputOptions.debug.write("tot_obs_cases_a2 = " + tot_obs_cases_a2 + "\n");
+            outputOptions.debug.write("tot_obs_controls_a2 = " + tot_obs_controls_a2 + "\n");
+            outputOptions.debug.write("tot_observed_a1_counts = " + (tot_obs_cases_a1 + tot_obs_controls_a1) + "\n");
+            outputOptions.debug.write("tot_observed_a2_counts = " + (tot_obs_cases_a2 + tot_obs_controls_a2) + "\n");
 
-        float obs_homoplasic_mutations_case_control_ratio_a1 = (float) tot_obs_cases_a1 / (float) tot_obs_controls_a1;
-        float obs_homoplasic_mutations_case_control_ratio_a2 = (float) tot_obs_cases_a2 / (float) tot_obs_controls_a2;
-        System.out.println("obs_homoplasic_mutations_case_control_ratio_a1 = " + obs_homoplasic_mutations_case_control_ratio_a1);
-        System.out.println("obs_homoplasic_mutations_case_control_ratio_a2 = " + obs_homoplasic_mutations_case_control_ratio_a2);
+            float obs_homoplasic_mutations_case_control_ratio_a1 = (float) tot_obs_cases_a1 / (float) tot_obs_controls_a1;
+            float obs_homoplasic_mutations_case_control_ratio_a2 = (float) tot_obs_cases_a2 / (float) tot_obs_controls_a2;
+            outputOptions.debug.write("obs_homoplasic_mutations_case_control_ratio_a1 = " + obs_homoplasic_mutations_case_control_ratio_a1 + "\n");
+            outputOptions.debug.write("obs_homoplasic_mutations_case_control_ratio_a2 = " + obs_homoplasic_mutations_case_control_ratio_a2 + "\n");
 
-        float p_success_both_alleles = (float) (tot_obs_cases_a1 + tot_obs_cases_a2) / (float) (tot_obs_cases_a1 + tot_obs_cases_a2 + tot_obs_controls_a1 + tot_obs_controls_a2);
-        float p_success_a1 = (float) tot_obs_cases_a1 / (float) (tot_obs_cases_a1 + tot_obs_controls_a1);
-        float p_success_a2 = (float) tot_obs_cases_a2 / (float) (tot_obs_cases_a2 + tot_obs_controls_a2);
-        System.out.println("Observed p(success|both alleles) := # cases / (# cases + # controls) = " + p_success_both_alleles);
-        System.out.println("Observed p(success|a1 only) = " + p_success_a1);
-        System.out.println("Observed p(success|a2 only) = " + p_success_a2);
-        System.out.println();
+            float p_success_both_alleles = (float) (tot_obs_cases_a1 + tot_obs_cases_a2) / (float) (tot_obs_cases_a1 + tot_obs_cases_a2 + tot_obs_controls_a1 + tot_obs_controls_a2);
+            float p_success_a1 = (float) tot_obs_cases_a1 / (float) (tot_obs_cases_a1 + tot_obs_controls_a1);
+            float p_success_a2 = (float) tot_obs_cases_a2 / (float) (tot_obs_cases_a2 + tot_obs_controls_a2);
+            outputOptions.debug.write("Observed p(success|both alleles) := # cases / (# cases + # controls) = " + p_success_both_alleles + "\n");
+            outputOptions.debug.write("Observed p(success|a1 only) = " + p_success_a1 + "\n");
+            outputOptions.debug.write("Observed p(success|a2 only) = " + p_success_a2 + "\n");
+            outputOptions.debug.flush();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
     }
 
 
@@ -2977,25 +3515,43 @@ public class Homoplasy_Counter implements Callable<Integer> {
             }
         }
 
-        // DEBUG
-        System.out.println("min_hcount = " + min_hcount);
-        System.out.println("all_events.size() = " + all_events.size());
-        System.out.println("homoplasically_informative_sites.size() = " + homoplasically_informative_sites.size());
-        System.out.println("a1_informative_count = " + a1_informative_count);
-        System.out.println("a2_informative_count = " + a2_informative_count);
-        System.out.println("tot # informative alleles = " + (a1_informative_count + a2_informative_count));
-        System.out.println("num_sites_both_alleles_informative = " + num_sites_both_alleles_informative);
-        //        homoplasically_informative_sites.forEach(i -> System.out.println(i));
-
-        // DEBUG:  duplicate segsite entries
-        List<Integer> segsite_IDs = homoplasically_informative_sites.stream().map(s -> s.segsite_ID).collect(Collectors.toList());
-        List<Integer> duplicate_segsites = segsite_IDs.stream().filter(ID -> Collections.frequency(segsite_IDs, ID) > 1).collect(Collectors.toList());
-        System.out.println("duplicate_segsites = " + duplicate_segsites);
-
         // if user has set the min_hcount too high and thus filtered out all segsites, then exit gracefully.
         if (homoplasically_informative_sites.size() == 0) {
             System.out.printf("%nmin_hcount = %s is set too high and has filtered out all segregating sites.  Try setting min_hcount to a lower value.%n%n", AlgoParams.min_hcount);
-            System.exit(0);
+            System.exit(-1);
+        }
+
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("\nsubset_by_min_hcount():\n");
+                outputOptions.debug.write("min_hcount = " + min_hcount + "\n");
+                outputOptions.debug.write("all_events.size() = " + all_events.size() + "\n");
+                outputOptions.debug.write("homoplasically_informative_sites.size() = " + homoplasically_informative_sites.size() + "\n");
+                outputOptions.debug.write("a1_informative_count = " + a1_informative_count  + "\n");
+                outputOptions.debug.write("a2_informative_count = " + a2_informative_count + "\n");
+                outputOptions.debug.write("tot # informative alleles = " + (a1_informative_count + a2_informative_count) + "\n");
+                outputOptions.debug.write("num_sites_both_alleles_informative = " + num_sites_both_alleles_informative + "\n");
+                //        homoplasically_informative_sites.forEach(i -> System.out.println(i));
+
+                // DEBUG:  duplicate segsite entries
+                List<Integer> segsite_IDs = homoplasically_informative_sites.stream().map(s -> s.segsite_ID).collect(Collectors.toList());
+                List<Integer> duplicate_segsites = segsite_IDs.stream().filter(ID -> Collections.frequency(segsite_IDs, ID) > 1).collect(Collectors.toList());
+                outputOptions.debug.write("duplicate_segsites = " + duplicate_segsites + "\n");
+                outputOptions.debug.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+
+        try {
+            outputOptions.log.write(String.format("%n# segregating sites with at least " + AlgoParams.min_hcount + " homoplasic mutations: " + homoplasically_informative_sites.size() + "%n"));
+            outputOptions.log.flush();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the log file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
         }
 
         return homoplasically_informative_sites;
@@ -3657,6 +4213,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
                                                                     int m,
                                                                     double[] maxT_nulldist_a1_a2_combined) {
 
+        System.out.printf(Ansi.AUTO.string("@|fg(123) Calculating family-wise estimates . . . |@"));
+
         // this is only needed for diagnostics
         // sort all maxT null dists
 //        Arrays.parallelSort(maxT_nulldist_a1);
@@ -3668,8 +4226,18 @@ public class Homoplasy_Counter implements Callable<Integer> {
 //        System.out.println("maxT_nulldist_a2.length = " + maxT_nulldist_a2.length);
 //        System.out.println("binom pvalue maxTs for maxT nulldist a1: " + Arrays.toString(maxT_nulldist_a1));
 //        System.out.println("binom pvalue maxTs for maxT nulldist a2: " + Arrays.toString(maxT_nulldist_a2));
-        System.out.println("maxT_nulldist_a1_a2_combined.length = " + maxT_nulldist_a1_a2_combined.length);
-        System.out.println("binom pvalue maxTs for maxT nulldist a1 and a2 combined: " + Arrays.toString(maxT_nulldist_a1_a2_combined));
+        if (DEBUG_MODE) {
+            try {
+                outputOptions.debug.write("\ncalc_familywise_estimates_binom_combined_nulldists():\n");
+                outputOptions.debug.write("maxT_nulldist_a1_a2_combined.length = " + maxT_nulldist_a1_a2_combined.length + "\n");
+                outputOptions.debug.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+//        System.out.println("binom pvalue maxTs for maxT nulldist a1 and a2 combined: " + Arrays.toString(maxT_nulldist_a1_a2_combined));
 
 
 /*      old site-centric code:
@@ -3734,6 +4302,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 resampled_test_statistics[s].familywise_pvalue_a2 = familywise_pvalue_a2;
             }
         }
+
+        System.out.printf("family-wise estimates complete.%n");
     }
 
 
@@ -3894,6 +4464,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
     private void calc_pointwise_estimate_binom(ArrayList<Homoplasy_Events> homoplasically_informative_sites, Binomial_Test_Stat[] resampled_test_statistics, int m) {
 
+        System.out.printf(Ansi.AUTO.string("@|fg(213) %nCalculating point-wise estimates . . . |@"));
+
 /*      old site-centric code
         for (phyC_Test_Statistic site : resampled_test_statistics) {
             site.pointwise_pvalue_a1 = ((double)(site.r_a1 + 1)) / ((double)(m + 1));
@@ -3914,6 +4486,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 resampled_test_stat.pointwise_pvalue_a2 = ((double) (resampled_test_stat.r_a2 + 1)) / ((double) (m + 1));
             }
         }
+
+        System.out.printf("point-wise estimates complete.%n");
     }
 
 
@@ -5188,27 +5762,33 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
         private void output_resampled_pheno_counts() {
-            System.out.printf("%n%nDIAGNOSTIC:  Resampled case and control counts over all replicates%n");
+            try {
+                outputOptions.debug.write("\noutput_resampled_pheno_counts():\n");
+                outputOptions.debug.write("Resampled case and control counts over all replicates:\n");
+                outputOptions.debug.write("tot_resampled_cases_a1 = " + tot_resampled_cases_a1 + "\n");
+                outputOptions.debug.write("tot_resampled_controls_a1 = " + tot_resampled_controls_a1 + "\n");
+                outputOptions.debug.write("tot_resampled_cases_a2 = " + tot_resampled_cases_a2 + "\n");
+                outputOptions.debug.write("tot_resampled_controls_a2 = " + tot_resampled_controls_a2 + "\n");
+                outputOptions.debug.write("tot_resampled_a1_counts = " + (tot_resampled_cases_a1 + tot_resampled_controls_a1) + "\n");
+                outputOptions.debug.write("tot_resampled_a2_counts = " + (tot_resampled_cases_a2 + tot_resampled_controls_a2) + "\n");
 
-            System.out.println("tot_resampled_cases_a1 = " + tot_resampled_cases_a1);
-            System.out.println("tot_resampled_controls_a1 = " + tot_resampled_controls_a1);
-            System.out.println("tot_resampled_cases_a2 = " + tot_resampled_cases_a2);
-            System.out.println("tot_resampled_controls_a2 = " + tot_resampled_controls_a2);
-            System.out.println("tot_resampled_a1_counts = " + (tot_resampled_cases_a1 + tot_resampled_controls_a1));
-            System.out.println("tot_resampled_a2_counts = " + (tot_resampled_cases_a2 + tot_resampled_controls_a2));
+                float resampled_case_control_ratio_a1 = (float) tot_resampled_cases_a1 / (float) tot_resampled_controls_a1;
+                float resampled_case_control_ratio_a2 = (float) tot_resampled_cases_a2 / (float) tot_resampled_controls_a2;
+                outputOptions.debug.write("resampled_case_control_ratio_a1 = " + resampled_case_control_ratio_a1 + "\n");
+                outputOptions.debug.write("resampled_case_control_ratio_a2 = " + resampled_case_control_ratio_a2 + "\n");
 
-            float resampled_case_control_ratio_a1 = (float) tot_resampled_cases_a1 / (float) tot_resampled_controls_a1;
-            float resampled_case_control_ratio_a2 = (float) tot_resampled_cases_a2 / (float) tot_resampled_controls_a2;
-            System.out.println("resampled_case_control_ratio_a1 = " + resampled_case_control_ratio_a1);
-            System.out.println("resampled_case_control_ratio_a2 = " + resampled_case_control_ratio_a2);
-
-            float resampled_p_success_both_alleles = (float) (tot_resampled_cases_a1 + tot_resampled_cases_a2) / (float) (tot_resampled_cases_a1 + tot_resampled_cases_a2 + tot_resampled_controls_a1 + tot_resampled_controls_a2);
-            float resampled_p_success_a1 = (float) tot_resampled_cases_a1 / (float) (tot_resampled_cases_a1 + tot_resampled_controls_a1);
-            float resampled_p_success_a2 = (float) tot_resampled_cases_a2 / (float) (tot_resampled_cases_a2 + tot_resampled_controls_a2);
-            System.out.println("Resampled p(success|both alleles) := # cases / (# cases + # controls) = " + resampled_p_success_both_alleles);
-            System.out.println("Resampled p(success|a1 only) = " + resampled_p_success_a1);
-            System.out.println("Resampled p(success|a2 only) = " + resampled_p_success_a2);
-            System.out.println();
+                float resampled_p_success_both_alleles = (float) (tot_resampled_cases_a1 + tot_resampled_cases_a2) / (float) (tot_resampled_cases_a1 + tot_resampled_cases_a2 + tot_resampled_controls_a1 + tot_resampled_controls_a2);
+                float resampled_p_success_a1 = (float) tot_resampled_cases_a1 / (float) (tot_resampled_cases_a1 + tot_resampled_controls_a1);
+                float resampled_p_success_a2 = (float) tot_resampled_cases_a2 / (float) (tot_resampled_cases_a2 + tot_resampled_controls_a2);
+                outputOptions.debug.write("Resampled p(success|both alleles) := # cases / (# cases + # controls) = " + resampled_p_success_both_alleles + "\n");
+                outputOptions.debug.write("Resampled p(success|a1 only) = " + resampled_p_success_a1 + "\n");
+                outputOptions.debug.write("Resampled p(success|a2 only) = " + resampled_p_success_a2 + "\n");
+                outputOptions.debug.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the debug file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
         }
 
 
@@ -5229,6 +5809,22 @@ public class Homoplasy_Counter implements Callable<Integer> {
             float obs_p_success_both_alleles = (float) (a1_case_counts + a2_case_counts) / (float) (a1_case_counts + a2_case_counts + a1_control_counts + a2_control_counts);
             System.out.println(obs_p_success_both_alleles);
         }
+    }
+
+
+
+    private class Row {
+        private Homoplasy_Events homoplasy_events_for_one_site;
+        private Binomial_Test_Stat test_stat_for_one_site;
+
+        public Row(Homoplasy_Events homoplasy_events_for_one_site, Binomial_Test_Stat test_stat_for_one_site) {
+            this.homoplasy_events_for_one_site = homoplasy_events_for_one_site;
+            this.test_stat_for_one_site = test_stat_for_one_site;
+        }
+
+//        public Double get_maxT() {
+//            return test_stat_for_one_site.familywise_pvalue_a2;
+//        }
     }
 
 
