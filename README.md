@@ -1,5 +1,5 @@
 # Easy-Is-Better-Than-Better
-Pre-Alpha private repo for a new homoplasy counter.  This pre-alpha release is intended for a handful of users to test as major changes continue to be incorporated.
+Pre-Alpha private repo for a new homoplasy counter.  This pre-alpha release is intended for a handful of users to test as major changes continue to be incorporated.  We named this initial version Easy-Is-Better-Than-Better to highlight the care we're putting into making the software easy to use, robust with no bugs, and elegant for the end-user.  The current state of research software is in poor condition as many of you know, and it's our philosophy that putting real effort into our first public release of this program will go a long ways in gaining adoption, perhaps even more so than a better algorithm (which we aim to also achieve).  
 
 
 
@@ -99,7 +99,7 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 
 ## Upcoming Major Code Changes
-- Incorporate vcf format (this will be another input option in addition to the current multi-fasta + plink map option)
+- Potentially incorporate vcf format (this will be another input option in addition to the current multi-fasta + plink map option that corresponds to the physical positions of the variants in the fasta file).  We could use feedback from folks on what your bacterial genomics workflow looks like so we can better accomodate users.
 
 
 
