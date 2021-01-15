@@ -389,7 +389,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         if (DEBUG_MODE) {
             try {
                 outputOptions.debug = new BufferedWriter(new FileWriter(outputOptions.output_dir + File.separator + basename + curr_time + ".debug"));
-                outputOptions.debug.write("poutine session start time: " + session_start_time);
+                outputOptions.debug.write("poutine session start time: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")));
                 outputOptions.debug.newLine();
                 outputOptions.debug.flush();  // since in DEBUG mode, I want to capture everything in the buffer immediately in case of early program termination
             } catch (IOException e) {
@@ -473,7 +473,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         BufferedWriter log = outputOptions.log;
 
         try {
-            log.write("poutine session start time: " + session_start_time);
+            log.write("poutine session start time: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")));
             log.newLine();
             log.newLine();
 
@@ -510,11 +510,15 @@ public class Homoplasy_Counter implements Callable<Integer> {
             log.newLine();
 
             // output dir
-            log.write("ouput directory for all files: " + outputOptions.output_dir.getAbsolutePath());
+            log.write("ouput directory: " + outputOptions.output_dir.getAbsolutePath());
             log.newLine();
 
             // out files
-            log.write("output files: " + outputOptions.output_file.getAbsolutePath() + ", " + outputOptions.output_file_sorted_by_a1_maxT.getAbsolutePath() + ", " + outputOptions.output_file_sorted_by_a2_maxT.getAbsolutePath());
+            log.write(String.format("output files:%n" +
+                    "     log file: " + outputOptions.log_file.getAbsolutePath() + "%n" +
+                    "     all alleles results file (sorted by physical position): " + outputOptions.output_file.getAbsolutePath() + "%n" +
+                    "     allele 1 results file: " + outputOptions.output_file_sorted_by_a1_maxT.getAbsolutePath() + "%n" +
+                    "     allele 2 results file: " + outputOptions.output_file_sorted_by_a2_maxT.getAbsolutePath()));
             log.newLine();
 
             // log file
