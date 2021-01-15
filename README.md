@@ -99,6 +99,10 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 
 ## Upcoming Major Code Changes
+- new commandline feature:  allow user to use a previously run ancestral reconstruction
+- allow for missing phenotypes
+- allow for missing genotypes
+- report # monomorphic, bi/tri/quad-allelic sites instead of grouping them to all into non-biallelic category (in debug mode)
 - Potentially incorporate vcf format (this will be another input option in addition to the current multi-fasta + plink map option that corresponds to the physical positions of the variants in the fasta file).  We could use feedback from folks on what your bacterial genomics workflow looks like so we can better accomodate users.
 
 
