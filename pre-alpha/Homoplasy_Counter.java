@@ -73,20 +73,20 @@ public class Homoplasy_Counter implements Callable<Integer> {
         @ArgGroup(exclusive = true, multiplicity = "1", validate = true, heading = "@|bg(213) %nInput genotype file: vcf or fasta format%n|@")
         Genotypes genotypes;
         static class Genotypes {
-            @Option(names = {"-v", "--vcf"}, description = "Multi-sample vcf input file")
+            @Option(names = {"-v", "--vcf"}, description = "Multi-sample vcf file (this option is currently not in use/available)")
             private String vcf_filename;
 
-            @Option(names = {"-f", "--fasta"}, description = "Multi-fasta input file")
+            @Option(names = {"-f", "--fasta"}, description = "Multi-fasta file (ancestral fasta file if -u in use)")
             private String msa_fasta_filename;
         }
 
         @ArgGroup(exclusive = false, multiplicity = "1", validate = true, heading = "@|bg(123) %nOther input files%n|@")
         OtherInputFiles otherInputFiles;
         static class OtherInputFiles {
-            @Option(names = {"-p", "--phenos"}, description = "Phenotype input file", required = true)
+            @Option(names = {"-p", "--phenos"}, description = "Phenotype file", required = true)
             private String pheno_filename;
 
-            @Option(names = {"-t", "--tree"}, description = "Newick input tree", required = true)
+            @Option(names = {"-t", "--tree"}, description = "Newick file (ancestral newick file if -u in use)", required = true)
             private String newick_filename;
 
             @Option(names = {"-m", "--map"}, description = "Plink map file", required = true)
@@ -98,7 +98,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
     AlgoParams algoParams;
     static class AlgoParams {
         private static int m = 100000; // default value
-        @Option(names = {"-r", "--replicates"}, paramLabel = "<# replicates>", description = "# Replicates used for resampling (default: 100000)", required = false)
+        @Option(names = {"-r", "--replicates"}, paramLabel = "<# replicates>", description = "# Replicates used for resampling (default: 100000)", required = false, order = 1)
         private void validate_and_set_replicates_option(int user_value) {
             if (user_value > 0)
                 m = user_value;
@@ -107,13 +107,16 @@ public class Homoplasy_Counter implements Callable<Integer> {
         }
 
         private static int min_hcount = 4;  // default value.  1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
-        @Option(names = {"-c", "--min_hcount"}, paramLabel = "<count>", description = "Min # homoplasic mutations required at each segregating site (default: 4). This option is analogous to the common maf filter.", required = false)
+        @Option(names = {"-c", "--min_hcount"}, paramLabel = "<count>", description = "Min # homoplasic mutations required at each segregating site (default: 4). This option is analogous to the common maf filter.", required = false, order = 2)
         private void validate_and_set_min_hcount_option(int user_value) {
             if (user_value >= 0)
                 min_hcount = user_value;
             else
                 throw new ParameterException(spec.commandLine(), String.format("%nInvalid value '%s' for option '--min_hcounts': " + "# homoplasic mutations at a segregating site must be >= 0", user_value));
         }
+
+        @Option(names = {"-u", "--use-precomputed-anc-recon"}, description = "Use precomputed ancestral reconstruction as input. Specify --fasta for ancestral fasta file and --tree for ancestral newick file.", required = false, order = 3)
+        private static boolean use_precomputed_anc_recon = false;
     }
 
     @ArgGroup(validate = false, heading = "@|bg(85) %nRuntime options%n|@")
@@ -131,7 +134,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
     @ArgGroup(validate = false, heading = "@|bg(197) %nOutput files and options%n|@")
     OutputOptions outputOptions = new OutputOptions();
-
     static class OutputOptions {
         @Option(names = {"-d", "--out-dir"}, description = "Output directory for all output files (default: poutine_session_current_time)", required = false)
         private File output_dir;  // default is relative to the current dir
@@ -157,7 +159,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         @Option(names = {"-X", "--force-overwrite"}, description = "Allow overwriting of existing files having the same user-specified filenames (default: program safely exits if existing files detected)", required = false)
         private boolean force_overwrite = false;
 
-        @Option(names = {"-D", "--debug"}, description = "Turns debug mode on: output all debugging information to debug file out-dir/output_filename.debug)", required = false)
+        @Option(names = {"-D", "--debug"}, description = "Turns debug mode on: output all debugging information to debug file out-dir/output_filename.debug (this option is likely temporary for testing purposes)", required = false)
         private boolean DEBUG_MODE = false;
         private BufferedWriter debug;
     }
@@ -240,7 +242,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         more_cmdline_magic();
         log_cmdline_global_vars();
-        validate_input_newick_format();
+        String input_newick = read_and_validate_input_newick_format();
         System.out.printf(Ansi.AUTO.string("@|fg(213) %nStarting poutine session: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")) + "%n|@"));
 
         // WARNING:  warn user if user-specified # replicates is potentially too low to properly estimate statistical significance
@@ -259,22 +261,39 @@ public class Homoplasy_Counter implements Callable<Integer> {
          * - read in output file msa fasta      <--- build_seg_sites()
          * - build_tree(newick)
          */
-        ancestral_reconstruction();
+        String ancestral_newick = null;
+        String ancestral_fasta = null;
+        if (!algoParams.use_precomputed_anc_recon) {
+            ancestral_reconstruction();
 
-        // parse treetime's annotated nexus file (with internal node's labelled) -> newick
-        String newick = nexus_to_newick();
+            // parse treetime's annotated nexus file (with internal node's labelled) -> newick.  In addition, set newick to point to this ancestral newick.
+            ancestral_newick = nexus_to_newick();
+
+            // write newick to file for potential subsequent use
+            write_newick(ancestral_newick);
+
+            // set ancestral_fasta to point to treetime's ancestral_sequences.fasta file
+            ancestral_fasta = outputOptions.anc_recon_dir + File.separator + "ancestral_sequences.fasta";
+        }  else {
+            System.out.printf(Ansi.AUTO.string("@|fg(123) %nSkipping ancestral reconstruction . . .%n|@"));
+
+            // set ancestral_newick to point to user-specified precomputed ancestral newick file
+            ancestral_newick = input_newick;
+
+            // set ancestral_fasta to point to user-specified precomputed ancestral fasta file
+            ancestral_fasta = inputFiles.genotypes.msa_fasta_filename;
+        }
 
         // create tree data structure
-        NewickTree tree = build_tree(newick);
+        NewickTree tree = build_tree(ancestral_newick);
 
-        // process treetime's ancestral reconstruction fasta output file:
         // read in ancestral genotypes
-        HashMap<String, char[]> seg_sites = build_seg_sites();
+        HashMap<String, char[]> seg_sites = build_seg_sites(ancestral_fasta);
         // output # segregating sites (map file and anc recon fasta file)
 //        System.out.println("physical_poss.length = " + physical_poss.length);
         // TODO:  rename build_seg_sites() -> read_ancestral_seqs()?  rename seg_sites -> ancestral_seqs?
 
-        // PLINK .map file that contains physical positions in the order of the ped file used to create input files for CFML
+        // PLINK map file that contains physical positions in the order of the ped file used to create input files for CFML
         int[] physical_poss = get_physical_positions();
 
         // TODO:  refactor all ArrayLists into arrays[] since I know the sizes ahead of time?
@@ -296,10 +315,48 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
 
+//    private String read_newick() {
+//
+//        String newick = null;
+//
+//        try (BufferedReader br = new BufferedReader(new FileReader(inputFiles.otherInputFiles.newick_filename))) {
+//
+//        } catch (IOException e) {
+//            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while reading the ancestral newick tree file. Please see the stack trace in the log file for more information on this error.%n|@"));
+//            e.printStackTrace();
+//            System.exit(-1);
+//        }
+//
+//        return newick;
+//    }
+
+
+
+    /**
+     * This method writes out a newick tree to a file named ancestral_tree.newick (inside anc_recon_dir) so that users have the ability to reuse this
+     * newick file for subsequent poutine sessions without invoking a redundant ancestral reconstruction.  See --use-precomputed-anc-recon cmdline option.
+     *
+     * @param newick
+     */
+    private void write_newick(String newick) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(outputOptions.anc_recon_dir + File.separator + "ancestral_tree.newick"))) {
+            bw.write(newick);
+            bw.newLine();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing the ancestral newick tree to the ancestral reconstruction directory. Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
+        }
+    }
+
+
+
     /**
      *  This method checks the newick format of the input newick tree file.
+     *
+     *  If --use-precomputed-anc-recon is turned on, this input newick file represents a newick with ancestral nodes labelled
      */
-    private void validate_input_newick_format() {
+    private String read_and_validate_input_newick_format() {
 
         String newick = null;
         try (BufferedReader br = new BufferedReader(new FileReader(inputFiles.otherInputFiles.newick_filename))) {
@@ -326,6 +383,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
             e.printStackTrace();
             System.exit(-1);
         }
+
+        return newick;
     }
 
 
@@ -361,7 +420,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
         outputOptions.output_dir = get_validated_toplevel_path(outputOptions.output_dir, basename + curr_time, curr_time);
         outputOptions.output_dir.mkdir();  // create dir now that it has passed all checks (eg: dir does not exist yet or --force-overwrite is specified by user)
 
-        outputOptions.anc_recon_dir = get_validated_relative_path(outputOptions.output_dir, outputOptions.anc_recon_dir, outputOptions.output_dir + File.separator + "ancestral_reconstruction_" + curr_time, curr_time);
+        if (!algoParams.use_precomputed_anc_recon)
+            outputOptions.anc_recon_dir = get_validated_relative_path(outputOptions.output_dir, outputOptions.anc_recon_dir, outputOptions.output_dir + File.separator + "ancestral_reconstruction_" + curr_time, curr_time);
 
         // output files: ===========================================
         outputOptions.output_file = get_validated_relative_path(outputOptions.output_dir, outputOptions.output_file, outputOptions.output_dir + File.separator + basename + curr_time + ".out", curr_time);
@@ -466,7 +526,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     /*
-     * This method kicks off the program log with the first entry + all command line options (including default values used).
+     * This method kicks off the program log by logging all command line options (including default values used).
      */
     private void log_cmdline_global_vars() {
 
@@ -505,6 +565,10 @@ public class Homoplasy_Counter implements Callable<Integer> {
             log.write("min # homoplasic mutations required at each segregating site: " + AlgoParams.min_hcount);
             log.newLine();
 
+            // use-precomputed-anc-recon
+            log.write("Is --use-precomputed-anc-recon in use?: " + algoParams.use_precomputed_anc_recon);
+            log.newLine();
+
             // # threads
             log.write("# threads used: " + RuntimeSettings.num_threads);
             log.newLine();
@@ -522,8 +586,13 @@ public class Homoplasy_Counter implements Callable<Integer> {
             log.newLine();
 
             // log file
-            log.write("ancestral reconstruction output directory: " + outputOptions.anc_recon_dir.getAbsolutePath());
-            log.newLine();
+            if (!algoParams.use_precomputed_anc_recon) {
+                log.write("ancestral reconstruction output directory: " + outputOptions.anc_recon_dir.getAbsolutePath());
+                log.newLine();
+            } else {
+                log.write("ancestral reconstruction output directory: not in use because --use-precomputed-anc-recon option turned on.");
+                log.newLine();
+            }
 
             // timestamp
             log.write("Is --timestamp option in use?: " + outputOptions.timestamp);
@@ -739,6 +808,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
             e.printStackTrace();
             System.exit(-1);
         }
+
+        // write newick tree out to file inside anc_recon_dir
+
 
         return newick;
     }
@@ -969,9 +1041,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     /**
-     * This version works with treetime.
-     * <p>
-     * Build a tree data structure from newick grammar
+     * Build a tree data structure from a newick string.
      */
     private NewickTree build_tree(String newick) {
 
@@ -985,7 +1055,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
             outputOptions.log.write(String.format("%ntree file: # of leaves = " + tree.getLeafNodes().size() + "%n"));
             outputOptions.log.flush();
-        } catch (IOException | DataFormatException e) {
+        } catch (IOException | DataFormatException | NullPointerException e) {
             System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while processing the input newick tree. Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
             System.exit(-1);
@@ -1068,10 +1138,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     /**
-     * This method replaces the old cfml build_seg_sites().
-     * This method reads in treetime's ancestral seqs fasta file.
+     * This method reads in treetime's ancestral fasta file or a user-specified ancestral fasta file if --use-precomputed-anc-recon option is turned on.
      */
-    private HashMap<String, char[]> build_seg_sites() {
+    private HashMap<String, char[]> build_seg_sites(String ancestral_fasta) {
         HashMap<String, char[]> seg_sites = new HashMap<>();  // key := node name, value := snps across all segsites
 //        ArrayList<String> node_names = new ArrayList<>();
 //        ArrayList<char[]> snp_sets = new ArrayList<>();
@@ -1080,7 +1149,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
             int num_segsites_detected = -1;
 
     //        Fasta_Manager multi_fasta_file = new Fasta_Manager(anc_recon_dir + File.separator + "ancestral_sequences.fasta");
-            Fasta_Manager multi_fasta_file = new Fasta_Manager(outputOptions.anc_recon_dir + File.separator + "ancestral_sequences.fasta");
+//            Fasta_Manager multi_fasta_file = new Fasta_Manager(outputOptions.anc_recon_dir + File.separator + "ancestral_sequences.fasta");
+            Fasta_Manager multi_fasta_file = new Fasta_Manager(ancestral_fasta);
             Fasta_Record curr_record;
             while ((curr_record = multi_fasta_file.next()) != null) {
                 String node_name = curr_record.getHeader();
