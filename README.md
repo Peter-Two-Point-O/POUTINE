@@ -96,13 +96,13 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 - There are now a bounty of checks (e.g. malformed input file formats, etc) that allow the program to fail fast and meaningfully.  User is now prompted with console and log messages that provide either warnings and/or points them to further action.
 - All output (whether to console or file) is now pretty formatted and human understandable, so if there is anything you want to see changed, just let us know!
 - New commandline feature (-u or --use-precomputed-anc-recon):  this new feature allows the user to utilize a precomputed ancestral reconstruction fasta and newick file.  When the option is turned on, treetime is bypassed completely and the program understands that it is now looking at a fasta file with ancestral genotypes as well as a newick file with internal nodes labelled.  In addition, I've updated the program to output the newick tree that I parse out from treetime's nexus output file.  This allows users to easily reuse this ancestral_tree.newick file (along with its accompanying ancestral_sequences.fasta file) for subsequent poutine sessions to bypass ancestral reconstruction and more quickly explore other GWAS settings and/or phenotypes.  This new feature is of great utility for moderate to large datasets where the ancestral reconstruction phase is the rate-limiting step and there is a desire to run multiple poutine sessions based upon the same input genotypes and tree.
+- Program now identifies # monomorphic, bi/tri/quad-allelic sites, and reporting this metric in the log file (and debug file).  This is particularly useful as a sanity check to see which sites are being assayed by poutine (only biallelic sites for now).  I anticipate users not considering this point, and thus seeing the # non-biallelic sites can potentially alert the user to either problems in their dataset and/or # sites that are not being considered by poutine.  This need came from analyzing the discovery set where a substantial number of sites turned out to be monomorphic (due likely to subclonal heterogeneity being picked up by the variant caller).  A future version may include the capability of considering multiallelic sites perhaps using a multinomial test.
 
 
 
 ## Upcoming Major Code Changes
 - allow for missing phenotypes
 - allow for missing genotypes
-- report # monomorphic, bi/tri/quad-allelic sites instead of grouping them to all into non-biallelic category (in debug mode)
 - Potentially incorporate vcf format (this will be another input option in addition to the current multi-fasta + plink map option that corresponds to the physical positions of the variants in the fasta file).  We could use feedback from folks on what your bacterial genomics workflow looks like so we can better accomodate users.
 
 
