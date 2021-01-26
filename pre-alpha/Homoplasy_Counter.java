@@ -1293,8 +1293,12 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         System.out.printf(Ansi.AUTO.string("@|fg(222) %nCounting all homoplasy events . . . |@"));
 
-        int num_non_biallelic_sites = 0;
-        int num_monomorphic_sites = 0;
+//        int num_non_biallelic_sites = 0;
+        int num_monomorphic_sites = 0;  // allele counts are specific to the sample population, and thus does not include the allele from the reference genome, e.g. monomorphic is not polymorphic in your sample pop.
+        int num_bi_allelic_sites = 0;
+        int num_tri_allelic_sites = 0;
+        int num_quad_allelic_sites = 0;
+        int more_than_four_alleles_detected = 0;
         ArrayList<Homoplasy_Events> all_events = new ArrayList<>();
 
         // get leaf names (this is a bit inelegant as it is not used until new Homoplasy_Events()).  This is the closest I can place the code to where it is needed without
@@ -1323,19 +1327,57 @@ public class Homoplasy_Counter implements Callable<Integer> {
             // TODO:  rename method to map_ancestral_alleles_to_seg_site()?  rename mapped_seg_site to just seg_site?
 
             // TODO:  perhaps refactor elsewhere, quick do this now to get results
+            /* NOTE:  Blocked this out to expand code to identify monomorphic, tri-allelic, quad-allelic polymorphic sites.  Instead of calling is_biallelic(), # of alleles is identified and returned in new method.
             if (is_biallelic(leaves, mapped_seg_site)) {
                 Homoplasy_Events segsite_homoplasy_events = identify_homoplasy_events_for_seg_site(tree, mapped_seg_site, segsite_ID, p, leaf_names);
                 all_events.add(segsite_homoplasy_events);
             } else {  // tri/quad-allelic site
                 num_non_biallelic_sites++;
+            }*/
+
+            switch (num_alleles_at_site(leaves, mapped_seg_site)) {
+                case 2:  // bi-allelic site
+                    num_bi_allelic_sites++;
+                    Homoplasy_Events segsite_homoplasy_events = identify_homoplasy_events_for_seg_site(tree, mapped_seg_site, segsite_ID, p, leaf_names);
+                    all_events.add(segsite_homoplasy_events);
+                    break;
+                case 1:  // monomorphic site
+                    num_monomorphic_sites++;
+                    break;
+                case 3:  // tri-allelic
+                    num_tri_allelic_sites++;
+                    break;
+                case 4:  // quad-allelic
+                    num_quad_allelic_sites++;
+                    break;
+                default:
+                    more_than_four_alleles_detected++;
+                    break;
             }
+        }
+
+        try {
+            outputOptions.log.write(String.format("%n# bi-allelic sites: " + num_bi_allelic_sites));
+            outputOptions.log.write(String.format("%n# monomorphic sites: " + num_monomorphic_sites));
+            outputOptions.log.write(String.format("%n# tri-allelic sites: " + num_tri_allelic_sites));
+            outputOptions.log.write(String.format("%n# quad-allelic sites: " + num_quad_allelic_sites));
+            outputOptions.log.write(String.format("%n# sites with more than four alleles detected: " + more_than_four_alleles_detected + "%n"));
+            outputOptions.log.flush();
+        } catch (IOException e) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the log file.  Please see the stack trace in the log file for more information on this error.%n|@"));
+            e.printStackTrace();
+            System.exit(-1);
         }
 
         if (DEBUG_MODE) {
             try {
                 outputOptions.debug.write("\ncount_all_homoplasy_events():\n");
-                outputOptions.debug.write("num_non_biallelic_sites = " + num_non_biallelic_sites + "\n");
-                outputOptions.debug.write("num_monomorphic_sites = " + num_monomorphic_sites + "\n");
+//                outputOptions.debug.write("num_non_biallelic_sites = " + num_non_biallelic_sites + "\n");
+                outputOptions.debug.write("# bi-allelic sites = " + num_bi_allelic_sites + "\n");
+                outputOptions.debug.write("# monomorphic sites = " + num_monomorphic_sites + "\n");
+                outputOptions.debug.write("# tri-allelic sites = " + num_tri_allelic_sites + "\n");
+                outputOptions.debug.write("# quad-allelic sites = " + num_quad_allelic_sites + "\n");
+                outputOptions.debug.write("sites with more than four alleles detected = " + more_than_four_alleles_detected + "\n");
                 outputOptions.debug.flush();
 //                System.out.println("num_non_biallelic_sites = " + num_non_biallelic_sites);
 //                System.out.println("num_monomorphic_sites = " + num_monomorphic_sites);
@@ -1398,6 +1440,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         return all_events;
     }*/
+
+
+
     private boolean is_biallelic(List<NewickTreeNode> leaves, HashMap<String, Character> mapped_seg_site) {
         boolean is_biallelic = false;
 
@@ -1418,6 +1463,24 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         return is_biallelic;
     }
+
+
+
+    private int num_alleles_at_site(List<NewickTreeNode> leaves, HashMap<String, Character> mapped_seg_site) {
+
+        ArrayList<Character> all_genotypes_at_site = new ArrayList<>();
+
+        for (NewickTreeNode leaf : leaves)
+            all_genotypes_at_site.add(get_node_allele(leaf, mapped_seg_site));
+
+        Map<Character, List<Character>> alleles = all_genotypes_at_site.stream().collect(Collectors.groupingBy(a -> a));
+
+        // TODO:  check for non-ACGT chars,
+        // TODO:  check for if (alleles.size() > 4)?
+
+        return alleles.size();
+    }
+
 
 
     /**
