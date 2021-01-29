@@ -1475,9 +1475,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         Map<Character, List<Character>> alleles = all_genotypes_at_site.stream().collect(Collectors.groupingBy(a -> a));
 
-        // TODO:  check for non-ACGT chars,
-        // TODO:  check for if (alleles.size() > 4)?
-
         return alleles.size();
     }
 
@@ -1507,6 +1504,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * Currently, optimization not in use; keep code intuitive for now.
      * <p>
      * This method identifies and stores all MRCAs for each allele.  Only when # MRCAs for an allele >= 2 is there a homoplasy event by definition.
+     * // TODO:  this function could use parallization!
      * // TODO:  rename Homoplasy_Events to MRCAs?  to make it clear one still has to see >= 2 MRCAs for an allele before a homoplasy event is called.  Or I could make the check in this method:  if (HashMap < 2 MRCAs) delete the MRCA.
      */
     private Homoplasy_Events identify_homoplasy_events_for_seg_site(NewickTree tree, HashMap<String, Character> mapped_seg_site, int segsite_ID, int p,
@@ -1795,9 +1793,17 @@ public class Homoplasy_Counter implements Callable<Integer> {
         // Sanity check:
 //        System.out.println("phenos.size() = " + phenos.size());
 //        System.out.println("phenos = " + phenos);
+
+        // ORIGINAL 2 LINES THAT DO NOT WORK W FEATURE: MISSING PHENO DATA
         // following only works if 0 := control and 1 := case
-        int tot_num_cases = phenos.entrySet().stream().map(es -> Integer.parseInt(es.getValue())).mapToInt(i -> i).sum();
-        int tot_num_controls = phenos.size() - tot_num_cases;
+        // int tot_num_cases = phenos.entrySet().stream().map(es -> Integer.parseInt(es.getValue())).mapToInt(i -> i).sum();
+        // int tot_num_controls = phenos.size() - tot_num_cases;
+
+        // filter out missing phenotypes (eg "NA") before summation of ints, ie keep all pheno data matching a "0" or "1" (control or case)
+        List<String> available_phenos = phenos.values().stream().filter(s -> s.equals("0") || s.equals("1")).collect(Collectors.toList());
+        int tot_num_cases = available_phenos.stream().map(s -> Integer.parseInt(s)).mapToInt(i -> i).sum();
+        int tot_num_controls = available_phenos.size() - tot_num_cases;
+        int tot_num_missing_phenos = phenos.size() - available_phenos.size();
 //        System.out.println("tot_num_cases = " + tot_num_cases + "\ttot_num_controls = " + tot_num_controls);
 
         // set global variables
@@ -1805,7 +1811,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         tot_num_sample_controls = tot_num_controls;
 
         try {
-            outputOptions.log.write(String.format("%nphenotype file: cases = " + tot_num_cases + ", controls = " + tot_num_controls + ", total sample size = " + (tot_num_cases + tot_num_controls) + "%n"));
+            outputOptions.log.write(String.format("%nphenotype file: cases = " + tot_num_cases + ", controls = " + tot_num_controls + ", samples missing phenotype = " + tot_num_missing_phenos + ", total sample size (cases + controls) = " + (tot_num_cases + tot_num_controls) + "%n"));
             outputOptions.log.flush();  // damn I think the %n aren't triggering flushes
         } catch (IOException e) {
             System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing to the log file.  Please see the stack trace in the log file for more information on this error.%n|@"));
@@ -2812,6 +2818,16 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         BinomialTest binom_test = new BinomialTest();
 
+        // DEBUG
+//        double zero_counts = binom_test.binomialTest(0, 0, 0.5, TAIL_TYPE);
+//        double one_case = binom_test.binomialTest(1, 1, 0.5, TAIL_TYPE);
+//        double one_control = binom_test.binomialTest(1, 0, 0.5, TAIL_TYPE);
+//        System.out.println("zero_counts = " + zero_counts);
+//        System.out.println("one_case = " + one_case);
+//        System.out.println("one_control = " + one_control);
+//        System.exit(-1);
+
+
         // calc expected background p_success values:  currently just use the p_success|both alleles value for a1 and a2 as a close approximation
         double background_p_success_given_both_alleles = calc_background_p_success();
         double p_success_a1 = background_p_success_given_both_alleles;
@@ -2835,15 +2851,13 @@ public class Homoplasy_Counter implements Callable<Integer> {
             if (site.a1_in_use) {
                 int tot_num_homoplasic_mutations_a1 = site.obs_counts[0] + site.obs_counts[1];
                 int num_cases_a1 = site.obs_counts[0];
-                resampled_test_statistics[s].obs_binom_pvalue_a1 = binom_test.binomialTest(tot_num_homoplasic_mutations_a1, num_cases_a1, p_success_a1,
-                        TAIL_TYPE);
+                resampled_test_statistics[s].obs_binom_pvalue_a1 = binom_test.binomialTest(tot_num_homoplasic_mutations_a1, num_cases_a1, p_success_a1, TAIL_TYPE);
             }
 
             if (site.a2_in_use) {
                 int tot_num_homoplasic_mutations_a2 = site.obs_counts[2] + site.obs_counts[3];
                 int num_cases_a2 = site.obs_counts[2];
-                resampled_test_statistics[s].obs_binom_pvalue_a2 = binom_test.binomialTest(tot_num_homoplasic_mutations_a2, num_cases_a2, p_success_a2,
-                        TAIL_TYPE);
+                resampled_test_statistics[s].obs_binom_pvalue_a2 = binom_test.binomialTest(tot_num_homoplasic_mutations_a2, num_cases_a2, p_success_a2, TAIL_TYPE);
             }
         }
 
@@ -3529,7 +3543,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         for (Map.Entry<String, HashSet<String>> homoplasic_mutation : homoplasic_mutations.entrySet()) {
             String node_name = homoplasic_mutation.getKey();
 
-            // if no pheno is available for this node (i.e. this is an internal node), simply continue without updating any counters of the contingency table
+            // if no pheno is available for this node (i.e. this is an internal node or sample is missing pheno data), simply continue without updating any counters of the contingency table
             if (phenos.containsKey(node_name)) {
                 String pheno = phenos.get(node_name);
 
@@ -3539,11 +3553,11 @@ public class Homoplasy_Counter implements Callable<Integer> {
                     counts_for_allele[1]++;
                 }*/
 
-                if (pheno.equals("1")) {
+                if (pheno.equals("1")) {  // case
                     counts_for_allele[0]++;
-                } else if (pheno.equals("0")) {
+                } else if (pheno.equals("0")) {  // control
                     counts_for_allele[1]++;
-                }
+                } // all other pheno values are considered missing pheno data
             }
         }
 
