@@ -97,7 +97,7 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 - All output (whether to console or file) is now pretty formatted and human understandable, so if there is anything you want to see changed, just let us know!
 - New commandline feature (-u or --use-precomputed-anc-recon):  this new feature allows the user to utilize a precomputed ancestral reconstruction fasta and newick file.  When the option is turned on, treetime is bypassed completely and the program understands that it is now looking at a fasta file with ancestral genotypes as well as a newick file with internal nodes labelled.  In addition, I've updated the program to output the newick tree that I parse out from treetime's nexus output file.  This allows users to easily reuse this ancestral_tree.newick file (along with its accompanying ancestral_sequences.fasta file) for subsequent poutine sessions to bypass ancestral reconstruction and more quickly explore other GWAS settings and/or phenotypes.  This new feature is of great utility for moderate to large datasets where the ancestral reconstruction phase is the rate-limiting step and there is a desire to run multiple poutine sessions based upon the same input genotypes and tree.
 - Program now identifies # monomorphic, bi/tri/quad-allelic sites, and reporting this metric in the log file (and debug file).  This is particularly useful as a sanity check to see which sites are being assayed by poutine (only biallelic sites for now).  I anticipate users not considering this point, and thus seeing the # non-biallelic sites can potentially alert the user to either problems in their dataset and/or # sites that are not being considered by poutine.  This need came from analyzing the discovery set where a substantial number of sites turned out to be monomorphic (due likely to subclonal heterogeneity being picked up by the variant caller).  A future version may include the capability of considering multiallelic sites perhaps using a multinomial test.
-* Program now works with missing phenotype data.
+- Program now works with missing phenotype data.
 > Philosophy behind how the algorithm treats missing phenotype data:
 >
 > Two ideas:
@@ -112,12 +112,17 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 > Differences between the 2 options:  I think option 2 is less error prone because I anticipate users removing samples with missing pheno data by simply deleting those rows from the pheno file only (and not also in the input geno file as required).  I could check for this with code and prompt the user to modify input files, but then modifying fasta files by an average user could also introduce errors.  With option 2, the program now protects a user if they are not even aware there are phenos with missing data/improperly coded. 
 
-* Program now understands missing genotypes.  
+- Program now understands missing genotypes.  
 >The philosophy here is essentially the same as missing phenotypes (though the code is not!):
 
 >I take a middle route where I preserve as much data as I can (i.e. segsites with some missing genotypes) while not adding to the data in any way (e.g. no imputation).  In a similar fashion to how the program deals with missing phenos, any non-random structure in genotype missingness is reflected in both obs and null dists, as such they can be safely compared.
 
 >In a future version for more explicit missing genotype control, one could build in preprocessing steps to both summarize genotype missingness by both sample and site, and also to test genotype missingness conditional on phenos at each site (i.e. are missing genotypes seen in more cases than controls?) say using a fisher's exact test.  This allows the user to preprocess and remove any sites where the genotype missingness looks highly non-random.  This preprocessing approach is how plink handles missing geno data.
+
+- Suite of "niceties" to make the program easier to use:
+
+	1) Program now checks for mismatched sample names across input files.  This is a common error and thus worth checking or else results may be incorrect.  Specifically, the program now checks for mismatched sample names across input genotype, phenotype, and tree files.  Note that this program itself does not place any restrictions on the makeup of the string that comprises the sample name.  The only requirement is that sample names across files match.  Program fails-fast if the sample names do not match, and the log file now reports the sample names in the phenotype file that do not match with either genotype and/or tree file.
+
 
 
 ## Upcoming Major Code Changes
