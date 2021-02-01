@@ -112,12 +112,16 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 > Differences between the 2 options:  I think option 2 is less error prone because I anticipate users removing samples with missing pheno data by simply deleting those rows from the pheno file only (and not also in the input geno file as required).  I could check for this with code and prompt the user to modify input files, but then modifying fasta files by an average user could also introduce errors.  With option 2, the program now protects a user if they are not even aware there are phenos with missing data/improperly coded. 
 
+* Program now understands missing genotypes.  
+>The philosophy here is essentially the same as missing phenotypes (though the code is not!):
 
+>I take a middle route where I preserve as much data as I can (i.e. segsites with some missing genotypes) while not adding to the data in any way (e.g. no imputation).  In a similar fashion to how the program deals with missing phenos, any non-random structure in genotype missingness is reflected in both obs and null dists, as such they can be safely compared.
+
+>In a future version for more explicit missing genotype control, one could build in preprocessing steps to both summarize genotype missingness by both sample and site, and also to test genotype missingness conditional on phenos at each site (i.e. are missing genotypes seen in more cases than controls?) say using a fisher's exact test.  This allows the user to preprocess and remove any sites where the genotype missingness looks highly non-random.  This preprocessing approach is how plink handles missing geno data.
 
 
 ## Upcoming Major Code Changes
-- allow for missing genotypes
-- Potentially incorporate vcf format (this will be another input option in addition to the current multi-fasta + plink map option that corresponds to the physical positions of the variants in the fasta file).  We could use feedback from folks on what your bacterial genomics workflow looks like so we can better accomodate users.
+- A suite of "niceties" (minor changes) that will make the program easier to use and more understandable.  This will represent the final changes before the preprint code freeze (of course barring any changes deemed a must based upon feedback from collaborators).
 
 
 
