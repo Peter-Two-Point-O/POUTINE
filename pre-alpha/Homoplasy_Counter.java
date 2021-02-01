@@ -633,16 +633,23 @@ public class Homoplasy_Counter implements Callable<Integer> {
             log.newLine();
 
             // out files
-            log.write(String.format("output files:%n" +
+//            log.write(String.format("output files:%n" +
+            log.write(String.format(
                     "     log file: " + outputOptions.log_file.getAbsolutePath() + "%n" +
-                    "     all alleles results file (sorted by physical position): " + outputOptions.output_file.getAbsolutePath() + "%n" +
-                    "     allele 1 results file: " + outputOptions.output_file_sorted_by_a1_maxT.getAbsolutePath() + "%n" +
-                    "     allele 2 results file: " + outputOptions.output_file_sorted_by_a2_maxT.getAbsolutePath()));
+                    "     results file (sorted by physical position): " + outputOptions.output_file.getAbsolutePath() + "%n" +
+                    "     results file by major allele (sorted by maxT pvalue): " + outputOptions.output_file_sorted_by_a1_maxT.getAbsolutePath() + "%n" +
+                    "     results file by minor allele (sorted by maxT pvalue): " + outputOptions.output_file_sorted_by_a2_maxT.getAbsolutePath()));
             log.newLine();
 
-            // log file
             if (!algoParams.use_precomputed_anc_recon) {
+                // anc recon output dir
                 log.write("ancestral reconstruction output directory: " + outputOptions.anc_recon_dir.getAbsolutePath());
+                log.newLine();
+
+                // anc recon output files
+                log.write(String.format(
+                        "     ancestral genotypes file: " + outputOptions.anc_recon_dir.getAbsolutePath() + File.separator + "ancestral_sequences.fasta%n" +
+                        "     ancestral tree file: " + outputOptions.anc_recon_dir.getAbsolutePath() + File.separator + "ancestral_tree.newick"));
                 log.newLine();
             } else {
                 log.write("ancestral reconstruction output directory: not in use because --use-precomputed-anc-recon option turned on.");
