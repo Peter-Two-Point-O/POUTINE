@@ -1310,8 +1310,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
         int more_than_four_alleles_detected = 0;
         ArrayList<Homoplasy_Events> all_events = new ArrayList<>();
 
-        // (DONE) TODO (GENO MISSINGNESS):  refactor all calls to get leaves such that it relies on this call here (leaves never change so there is no point calling the function for each segsite). Do the same that I
-        //  already did for leaf_names, ie this only needs to be called once and not for each segsite.  As such, I'll need to pass leaves into identify_homoplasy_events_for_seg_site()
         List<NewickTreeNode> leaves = tree.getLeafNodes();
         HashSet<String> leaf_names = get_leaf_names(leaves);
 
@@ -1341,8 +1339,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 num_non_biallelic_sites++;
             }*/
 
-            // (DONE) TODO (GENO MISSINGNESS):  perhaps deprecate num_alleles_at_site() and simply identify all alleles and store it, then call size for switch,
-            //  and then pass alleles data structure into identify_homoplasy_events_for_seg_site().
             Map<Character, List<Character>> alleles = get_alleles(leaves, mapped_seg_site);
 //            switch (num_alleles_at_site(leaves, mapped_seg_site)) {
             switch (alleles.size()) {
@@ -1380,7 +1376,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
             outputOptions.log.write(String.format("%n# bi-allelic sites: " + num_bi_allelic_sites));
             outputOptions.log.write(String.format("%n# monomorphic sites: " + num_monomorphic_sites));
             outputOptions.log.write(String.format("%n# tri-allelic sites: " + num_tri_allelic_sites));
-            outputOptions.log.write(String.format("%n# quad-allelic sites: " + num_quad_allelic_sites));
+            outputOptions.log.write(String.format("%n# quad-allelic sites: " + num_quad_allelic_sites + "%n"));
 //            outputOptions.log.write(String.format("%n# sites with more than four alleles detected: " + more_than_four_alleles_detected + "%n"));  // report only in debug file as a sanity check
             outputOptions.log.flush();
         } catch (IOException e) {
@@ -1488,9 +1484,10 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
     /**
      * This method identifies the alleles at this segregating site.
+     *
      * @param leaves
      * @param mapped_seg_site
-     * @return
+     * @return Map<Character allele, List genotypes>.  Genotypes are grouped by allele.
      */
     private Map<Character, List<Character>> get_alleles(List<NewickTreeNode> leaves, HashMap<String, Character> mapped_seg_site) {
         ArrayList<Character> genotypes = new ArrayList<>();
@@ -1498,7 +1495,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         for (NewickTreeNode leaf : leaves)
             genotypes.add(get_node_genotype(leaf, mapped_seg_site));
 
-        // (DONE) TODO (GENO MISSINGNESS):  this needs to understand missing genos
+        // ignore all missing genotype data (any geno codings outside of [ACGT])
         Map<Character, List<Character>> alleles = genotypes.stream().filter(geno -> geno == 'A' || geno == 'C' || geno == 'G' || geno == 'T').collect(Collectors.groupingBy(g -> g));
 
         return alleles;
@@ -1521,8 +1518,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     /**
-     * (DONE) TODO (GENO MISSINGNESS):  since this method is only called in one place, count_all_homoplasy_events(), I should just pass in leaves so that I'm not calling it again inside this method.
-     *
      * Get the names (ie sample ID) of each leaf.
      *
      * @param tree
@@ -1593,9 +1588,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
             add_MRCA(root, mapped_seg_site, allele1, allele1_MRCAs, allele2_MRCAs, curr_path);
         }
 
-        // (DONE) TODO (GENO MISSINGNESS):  perhaps combine this method with above call to identify_major_allele() -> returns char[2] where [0] := major allele (a1), [1] := minor allele (a2)
-//        HashMap<String, Character> alleles = get_alleles_for_site(allele1, mapped_seg_site);
-
         // at this point:  curr seg site has been fully counted.  The 2 allele HashMaps currently store all identified MRCAs.  Check each allele HashMap and remove all non-homoplasic mutations.
         remove_non_homoplasic_mutations(allele1_MRCAs);
         remove_non_homoplasic_mutations(allele2_MRCAs);
@@ -1614,25 +1606,14 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * @param mapped_seg_site
      * @param segsite_id
      * @param alleles
-     * @return HashMap<String, Character> alleles, key := "a1" (major) or "a2" (minor), value := allele (ACGT)
+     * @return HashMap<String, Character> alleles, key := "a1" (major) or "a2" (minor), value := allele [ACGT]
      */
     private HashMap<String, Character> identify_major_minor_alleles(Map<Character, List<Character>> alleles) {
 
-        // (DONE) TODO (GENO MISSINGNESS):  should probably allow user to use an input genotype file with tri/quad-allelic sites, otherwise they'd have to preprocess them out.
-        // At this point, this site must be biallelic.  This code is no longer necessary.
-//        if (alleles.size() != 2) {
-//            System.out.println("\nError:  there are more than 2 alleles at this segregating site");
-//            System.out.println("segsite_ID = " + segsite_ID);
-//            System.out.println("alleles = " + alleles);
-//             counts for each allele (should total # of samples actually used)
-//            alleles.values().forEach(a -> System.out.println(a.size()));
-//            System.exit(-1);
-//        }
-
         char major_allele = 0;
         char minor_allele = 0;
-        int major_allele_count = 0;
-        int minor_allele_count = 0;
+//        int major_allele_count = 0;
+//        int minor_allele_count = 0;
         Iterator<Map.Entry<Character, List<Character>>> it = alleles.entrySet().iterator();  // biallelic sites have exactly 2 Map entries, one for each allele
         Map.Entry<Character, List<Character>> arbitrary_a1 = it.next();
         Map.Entry<Character, List<Character>> arbitrary_a2 = it.next();
@@ -1640,18 +1621,18 @@ public class Homoplasy_Counter implements Callable<Integer> {
         int arbitrary_a2_size = arbitrary_a2.getValue().size();
         HashMap<String, Character> major_minor_alleles = new HashMap<>();
 
-        if (arbitrary_a1_size >= arbitrary_a2_size) {  // for equal frequency alleles (a1 size = a2 size), arbitrary a1 is picked as the major allele
+        if (arbitrary_a1_size >= arbitrary_a2_size) {  // for equal frequency alleles (a1 size == a2 size), arbitrary_a1 is picked as the major allele
             major_allele = arbitrary_a1.getKey();
-            major_allele_count = arbitrary_a1_size;
+//            major_allele_count = arbitrary_a1_size;
 
             minor_allele = arbitrary_a2.getKey();
-            minor_allele_count = arbitrary_a2.getValue().size();
+//            minor_allele_count = arbitrary_a2_size;
         } else {
             major_allele = arbitrary_a2.getKey();
-            major_allele_count = arbitrary_a2_size;
+//            major_allele_count = arbitrary_a2_size;
 
             minor_allele = arbitrary_a1.getKey();
-            minor_allele_count = arbitrary_a1_size;
+//            minor_allele_count = arbitrary_a1_size;
         }
 
         major_minor_alleles.put("a1", major_allele);
@@ -1736,17 +1717,15 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     /**
-     * Return the snp mapped to this node.
-     * (DONE) TODO (GENO MISSINGNESS):  rename to get_node_genotype()
+     * Return the genotype mapped to this node.
      */
     private char get_node_genotype(NewickTreeNode node, HashMap<String, Character> mapped_seg_site) {
-        // (DONE) TODO (GENO MISSINGNESS):  just spotted this, can I comment this out?!
         // DEBUG
 //        if (!mapped_seg_site.containsKey(node.getId())) {  // INTERNAL NODE NAME USED HERE
 //            System.out.println("missing sample from input segsites fasta file (but present in leaves of input tree) = " + node.getId());
 //        }
 
-        return mapped_seg_site.get(node.getId());  // INTERNAL NODE NAME USED HERE
+        return mapped_seg_site.get(node.getId());
     }
 
 
@@ -1760,12 +1739,12 @@ public class Homoplasy_Counter implements Callable<Integer> {
         char curr_geno = get_node_genotype(curr_node, mapped_seg_site);
         char prev_geno = get_node_genotype(prev_node, mapped_seg_site);
 
-        // (DONE) TODO (GENO MISSINGNESS):  never consider missing genos in homoplasy identification
+        // never consider missing genos in homoplasy identification
         if (prev_geno != 'A' && prev_geno != 'C' && prev_geno != 'G' && prev_geno != 'T') {  // if this node corresponds to a missing genotype
             is_MRCA_found = false;
         } else if (curr_geno != prev_geno) {
             is_MRCA_found = true;
-        } // else these two genotypes are non-missing and equal (prev_node is not homoplasic)
+        } // else these two genotypes are non-missing and equal (i.e. prev_node is not homoplasic)
 
 //        return curr_geno != prev_geno;
         return is_MRCA_found;
