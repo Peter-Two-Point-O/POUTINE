@@ -243,6 +243,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         more_cmdline_magic();
         log_cmdline_global_vars();
         String input_newick = read_and_validate_input_newick_format();
+
         System.out.printf(Ansi.AUTO.string("@|fg(213) %nStarting poutine session: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")) + "%n|@"));
 
         // WARNING:  warn user if user-specified # replicates is potentially too low to properly estimate statistical significance
@@ -289,9 +290,6 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         // read in ancestral genotypes
         HashMap<String, char[]> seg_sites = build_seg_sites(ancestral_fasta);
-        // output # segregating sites (map file and anc recon fasta file)
-//        System.out.println("physical_poss.length = " + physical_poss.length);
-        // TODO:  rename build_seg_sites() -> read_ancestral_seqs()?  rename seg_sites -> ancestral_seqs?
 
         // PLINK map file that contains physical positions in the order of the ped file used to create input files for CFML
         int[] physical_poss = get_physical_positions();
@@ -300,8 +298,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         HashMap<String, String> phenos = read_phenos();  // only extant phenotypes
 
-        // no longer used since creating an official log file
-//        log_session_info();
+        // check for mismatched sample names across files:  input geno, pheno, tree files.  Fail fast if sample names do not completely match.
+        check_sample_names(seg_sites, phenos, tree);
 
         // homoplasy counts
         ArrayList<Homoplasy_Events> all_events = count_all_homoplasy_events(tree, seg_sites, physical_poss);
@@ -312,6 +310,63 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         return 0;
     }
+
+
+
+    /**
+     * This method checks for mismatched sample names across input geno, pheno, and tree files.
+     * Note that sample size is based upon the samples seen in the pheno file.
+     * Also note that this program itself does not place any restrictions on the makeup of the
+     * string that comprises the sample name.  Only requirement is that sample names across
+     * files match.
+     *
+     * Method fails-fast if the sample names do not match.  Log file reports
+     * the sample names in the pheno file that do not match with either genotype
+     * and/or tree file.
+     *
+     * @param seg_sites
+     * @param phenos
+     * @param tree
+     */
+    private void check_sample_names(HashMap<String,char[]> seg_sites, HashMap<String, String> phenos, NewickTree tree) {
+        ArrayList<String> bad_sample_names = new ArrayList<>();
+
+        List<NewickTreeNode> leaves = tree.getLeafNodes();
+        HashSet<String> leaf_names = get_leaf_names(leaves);
+
+        Iterator<Map.Entry<String, String>> it = phenos.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, String> pheno = it.next();
+            String pheno_sample_name = pheno.getKey();
+
+            boolean matches_against_genofile = seg_sites.containsKey(pheno_sample_name);
+            boolean matches_against_treefile = leaf_names.contains(pheno_sample_name);
+            if (!matches_against_genofile || !matches_against_treefile)
+                bad_sample_names.add(pheno_sample_name);
+        }
+
+        if (bad_sample_names.size() > 0) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while checking sample names across input genotype, phenotype, and tree files.  Please see the log file for more information on this error.%n|@"));
+
+            try {
+                outputOptions.log.write(String.format("%nError: the following sample names from the input phenotype file do not match with sample names in either/both the input genotype and/or tree files:%n"));
+
+                for (String bad_sample_name : bad_sample_names) {
+                    outputOptions.log.write(bad_sample_name);
+                    outputOptions.log.newLine();
+                }
+
+                outputOptions.log.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the log file. Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+
+            System.exit(-1);
+        }
+    }
+
 
 
 
@@ -1193,8 +1248,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
         }  // ===========================================================================================================================*/
 
 //            outputOptions.log.write(String.format("%n# samples detected from input genotype file: " + seg_sites.size() + "%n"));
-            outputOptions.log.write(String.format("%ngenotype file: # segregating sites in each sample = " + num_segsites_detected + "%n"));
-            outputOptions.log.flush();
+//                outputOptions.log.write(String.format("%ngenotype file: # samples = " + seg_sites.size() + ", # segregating sites in each sample = " + num_segsites_detected + "%n"));
+                outputOptions.log.write(String.format("%ngenotype file: # segregating sites in each sample = " + num_segsites_detected + "%n"));
+                outputOptions.log.flush();
         } catch (IOException e) {
             System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while processing the ancestral_sequences.fasta file in the ancestral reconstruction directory. Please see the stack trace in the log file for more information on this error.%n|@"));
             e.printStackTrace();
