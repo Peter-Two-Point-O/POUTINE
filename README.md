@@ -29,6 +29,7 @@ Code is now encouraging a new directory structure:
 out_dir/
 |___ ancestral_reconstruction_dir/
      |___ ancestral_sequences.fasta
+     |___ ancestral_tree.newick
      |___ annotated_tree.nexus
      |___ sequence_evolution_model.txt     
 |___ poutine_session_current_time.log (any runtime errors will be found in this file)
