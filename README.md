@@ -1,5 +1,5 @@
 # Easy-Is-Better-Than-Better
-Pre-Alpha private repo for a new homoplasy counter.  This pre-alpha release is intended for a handful of users to test as major changes continue to be incorporated.  We named this initial version Easy-Is-Better-Than-Better to highlight the care we're putting into making the software easy to use, robust with no bugs, and elegant for the end-user.  The current state of research software is in poor condition as many of you know, and it's our philosophy that putting real effort into our first public release of this program will go a long ways in gaining adoption, perhaps even more so than a better algorithm (which we aim to also achieve).  
+Alpha version private repo for a new homoplasy counter.  This alpha release is intended for a handful of collaborators to test while major changes continue to be incorporated.  We named this initial version Easy-Is-Better-Than-Better to highlight the care we're putting into making the software easy to use, robust with few bugs, and elegant for the end-user.  The current state of research software is in poor condition as many of you know, and it's our philosophy that putting real effort into our first public release of this program will go a long ways in gaining adoption, perhaps even more so than a better algorithm (which we aim to also achieve).  
 
 
 
@@ -13,7 +13,7 @@ This program requires: (links are provided if you don't already have it on your 
 
 
 ## Executing The Program
-**UPDATE:  Program is now clean & user-friendly (too many changes to detail, so give it run and see for yourself)**
+**UPDATE:  Program is now clean & user-friendly (too many changes to detail, so give it a run and see for yourself)**
 
 From inside the pre-alpha/ directory, execute: `./poutine.sh --help`
 
