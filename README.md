@@ -11,10 +11,9 @@ This program requires: (links are provided if you don't already have it on your 
 - treetime (https://treetime.readthedocs.io/en/latest/installation.html)
 
 The preprint release version may use one of these deployment methods to ease installation for the user:
-
-	1) Containerization with something like Docker.
-	2) Compile everything java down to binary using GraalVM so program looks like any other local app (user would be responsible for treetime installation or to use their own anc recon program)
-	3) jlink + jpackage to create a local app with a self-contained jvm invisible to the user (user would again be responsible for installing their own anc recon program)
+- Containerization with something like Docker.
+- Compile everything java down to binary using GraalVM so program looks like any other local app (user would be responsible for treetime installation or to use their own anc recon program)
+- jlink + jpackage to create a local app with a self-contained jvm invisible to the user (user would again be responsible for installing their own anc recon program)
 
 
 
