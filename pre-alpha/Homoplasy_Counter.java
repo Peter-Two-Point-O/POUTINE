@@ -83,13 +83,13 @@ public class Homoplasy_Counter implements Callable<Integer> {
         @ArgGroup(exclusive = false, multiplicity = "1", validate = true, heading = "@|bg(123) %nOther input files%n|@")
         OtherInputFiles otherInputFiles;
         static class OtherInputFiles {
-            @Option(names = {"-p", "--phenos"}, description = "Phenotype file", required = true)
+            @Option(names = {"-p", "--phenos"}, description = "Phenotype file (case = 1, control = 0. Format is two columns tab-delimited with no header: column one is sample id, column two is phenotype)", required = true)
             private String pheno_filename;
 
             @Option(names = {"-t", "--tree"}, description = "Newick file (ancestral newick file if -u in use)", required = true)
             private String newick_filename;
 
-            @Option(names = {"-m", "--map"}, description = "Plink map file", required = true)
+            @Option(names = {"-m", "--map"}, description = "Physical positions file (PLINK map format or tab-delimited with no header: last column represents physical positions, all other columns not used)", required = true)
             private String map_filename;
         }
     }
@@ -285,6 +285,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
             ancestral_fasta = inputFiles.genotypes.msa_fasta_filename;
         }
 
+        System.out.printf(Ansi.AUTO.string("@|fg(85) %nConstructing internal data structures for tree, segregating sites, phenotypes . . . |@"));
         // create tree data structure
         NewickTree tree = build_tree(ancestral_newick);
 
@@ -300,6 +301,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         // check for mismatched sample names across files:  input geno, pheno, tree files.  Fail fast if sample names do not completely match.
         check_sample_names(seg_sites, phenos, tree);
+        System.out.printf("structures complete.%n");
 
         // homoplasy counts
         ArrayList<Homoplasy_Events> all_events = count_all_homoplasy_events(tree, seg_sites, physical_poss);
@@ -1925,12 +1927,11 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
 
     /**
-     * See format for input flat file above at top of file.
-     * <p>
-     * Currently, there is no enforcement on the pheno labels.  They may be anything (e.g. {0,1}, {-1, 1}).  The only constraints for now is that phenos are:
-     * 1)  discrete
-     * 2)  case/control (i.e. 2 phenos)
-     * 3)  case label always comes first before the control label (i.e.: {case, control}) <--- applies to convention in code
+     * This method reads in the phenotype file.
+     *
+     * control := 0
+     * case := 1
+     * All other pheno values are considered missing data.  User may use as many missing labels as they wish.
      */
     private HashMap<String, String> read_phenos() {
         HashMap<String, String> phenos = new HashMap<>();
