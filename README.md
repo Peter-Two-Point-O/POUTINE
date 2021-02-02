@@ -70,7 +70,7 @@ This is what a clean run should look like in the terminal with default settings:
 
 
 ## Reference Set
-Included in this release is our *reference set* comprised of 124 mtb strains we have used for internal testing.  The homoplasy_counter.sh file starts a test run using this reference set.
+Included in this release is our *reference set* comprised of 124 mtb strains we have used for internal testing.  Feel free to use this dataset for test runs of the program.
 
 
 
