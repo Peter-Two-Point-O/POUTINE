@@ -26,40 +26,10 @@ import static java.nio.file.StandardOpenOption.APPEND;
 
 
 /**
- * PURPOSE:  Homoplasy counting.
- * <p>
- * <p>
- * <p>
- * INPUT:
- * - need to update this section as it has significantly changed
- * <p>
- * <p>
- * -  breo.labelled_tree.newick          (output from ClonalFrameML, same topology as inferred by FastTree but CFML added names to internal nodes
- * -  breo.ML_sequence.fasta             (output from ClonalFrameML, contains actual alleles of ancestral reconstruction)
- * (DEPRECATED) -  breo.position_cross_reference.txt  (output from ClonalFrameML, contains mapping:  extant seg site --> ancestral seg site) (1-based index courtesy of CFML)
- * -  phenotypes                         (user-created input file, see format below)
- * -  .map file                          (PLINK file format that contains physical positions, and is crucially in the same order as its corresponding ped file used to create
- * the input files for CFML)
- * <p>
- * (DEPRECATED) -  breo.importation_status.txt        (output from ClonalFrameML, recombination tract file)
- * <p>
- * deprecated input files:  breoganii_pop_maf_05.fasta         (PED -> phylip sequential -> fasta) (extant seg sites >= 0.05 maf)
- * <p>
- * phenotype file format:
- * no header line
- * tab-delimited
- * col 1 := strain ID (this must match the IDs used as input to both FastTree and ClonalFrameML)
- * col 2 := 0 || 1    (these are user-defined, as long as one knows what 0 and 1 represents, e.g. for the breo dataset 1 := phage resistance := case)
- * <p>
- * <p>
- * <p>
- * OUTPUT:
- * - need to update this section as it has significantly changed
- *
  * @author Peter E Chen
- * @version 1.0.0
+ * @version 1.0.0 alpha
  */
-@Command(name = "poutine", version = "%npoutine 1.0.0 (pre-alpha)%n", mixinStandardHelpOptions = true, usageHelpWidth = 210, sortOptions = false, headerHeading = "%n", optionListHeading = "%n", footerHeading = "%n")
+@Command(name = "poutine", version = "%npoutine 1.0.0 (alpha)%n", mixinStandardHelpOptions = true, usageHelpWidth = 210, sortOptions = false, headerHeading = "%n", optionListHeading = "%n", footerHeading = "%n")
 public class Homoplasy_Counter implements Callable<Integer> {
     @Spec
     static CommandSpec spec;
@@ -159,7 +129,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         @Option(names = {"-X", "--force-overwrite"}, description = "Allow overwriting of existing files having the same user-specified filenames (default: program safely exits if existing files detected)", required = false)
         private boolean force_overwrite = false;
 
-        @Option(names = {"-D", "--debug"}, description = "Turns debug mode on: output all debugging information to debug file out-dir/output_filename.debug (this option is likely temporary for testing purposes)", required = false)
+        @Option(names = {"-D", "--debug"}, description = "Turns debug mode on: output all debugging information to debug file out-dir/poutine_session_current_time.debug (this option is likely temporary for testing purposes)", required = false)
         private boolean DEBUG_MODE = false;
         private BufferedWriter debug;
     }
