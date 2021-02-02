@@ -122,11 +122,11 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 - Suite of "niceties" to make the program easier to use:
 
 	1) Program now checks for mismatched sample names across input files.  This is a common error and thus worth checking or else results may be incorrect.  Specifically, the program now checks for mismatched sample names across input genotype, phenotype, and tree files.  Note that this program itself does not place any restrictions on the makeup of the string that comprises the sample name.  The only requirement is that sample names across files match.  Program fails-fast if the sample names do not match, and the log file now reports the sample names in the phenotype file that do not match with either genotype and/or tree file.
+	2) Improvements to log file, command-line help message, and terminal progress indicator.
 
 
 
 ## Upcoming Major Code Changes
-- A suite of "niceties" (minor changes) that will make the program easier to use and more understandable.  This will represent the final changes before the preprint code freeze (of course barring any changes deemed a must based upon feedback from collaborators).
-
+- No major changes currently planned.  Any future changes prior to preprint release will be based upon feedback from collaborators.
 
 
