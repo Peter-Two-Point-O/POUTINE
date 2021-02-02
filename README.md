@@ -44,7 +44,7 @@ For convenience, you can view the results output files in pretty-format using th
 To set TAB as the delimiter, macOS and Linux systems usually want `Ctrl-v <tab>` which is a Ctrl-v followed immediately by the tab key.
 
 Since a picture is worth a thousands words:
-![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_cli_screenshot_2.png)
+![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_cli_screenshot_3.png)
 
 This is what a clean run should look like in the terminal with default settings:
 ![Image of new console updates](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/pre-alpha/images/poutine_console_screenshot.png)
