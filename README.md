@@ -1,14 +1,19 @@
-# Easy-Is-Better-Than-Better
+# POUTINE (Easy-Is-Better-Than-Better edition)
 Alpha version private repo for a new homoplasy counter.  This alpha release is intended for a handful of collaborators to test while major changes continue to be incorporated.  We named this initial version Easy-Is-Better-Than-Better to highlight the care we're putting into making the software easy to use, robust with few bugs, and elegant for the end-user.  The current state of research software is in poor condition as many of you know, and it's our philosophy that putting real effort into our first public release of this program will go a long ways in gaining adoption, perhaps even more so than a better algorithm (which we aim to also achieve).  
 
 
 
 ## Installation
-This program requires: (links are provided if you don't already have it on your box or want the latest version)
+This program requires: (links are provided if you don't already have it on your box or want the latest java version for speed + smaller memory footprints)
 
 - java (https://www.oracle.com/java/technologies/javase-downloads.html)
 - python (https://www.python.org/downloads/)
 - treetime (https://treetime.readthedocs.io/en/latest/installation.html)
+
+The preprint release version may use one of these deployment methods to ease installation for the user:
+- Containerization with something like Docker.
+- Compile everything java down to binary using GraalVM so program looks like any other local app (user would be responsible for treetime installation or to use their own anc recon program)
+- jlink + jpackage to create a local app with a self-contained jvm invisible to the user (user would again be responsible for installing their own anc recon program)
 
 
 
@@ -129,5 +134,6 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 ## Upcoming Major Code Changes
 - No major changes currently planned.  Any future changes prior to preprint release will be based upon feedback from collaborators.
+
 
 
