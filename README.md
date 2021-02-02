@@ -4,11 +4,17 @@ Alpha version private repo for a new homoplasy counter.  This alpha release is i
 
 
 ## Installation
-This program requires: (links are provided if you don't already have it on your box or want the latest version)
+This program requires: (links are provided if you don't already have it on your box or want the latest java version for speed + smaller memory footprints)
 
 - java (https://www.oracle.com/java/technologies/javase-downloads.html)
 - python (https://www.python.org/downloads/)
 - treetime (https://treetime.readthedocs.io/en/latest/installation.html)
+
+The preprint release version may use one of these deployment methods to ease installation for the user:
+
+	1) Containerization with something like Docker.
+	2) Compile everything java down to binary using GraalVM so program looks like any other local app (user would be responsible for treetime installation or to use their own anc recon program)
+	3) jlink + jpackage to create a local app with a self-contained jvm invisible to the user (user would again be responsible for installing their own anc recon program)
 
 
 
@@ -129,5 +135,6 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 ## Upcoming Major Code Changes
 - No major changes currently planned.  Any future changes prior to preprint release will be based upon feedback from collaborators.
+
 
 
