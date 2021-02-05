@@ -21,6 +21,7 @@ The preprint release version may use one of these deployment methods to ease ins
 **UPDATE:  Program is now clean & user-friendly (too many changes to detail, so give it a run and see for yourself)**
 
 From inside the pre-alpha/ directory, execute: `./poutine.sh --help`
+Setting poutine.sh into your global path will allow you to call poutine.sh from anywhere (you won't need the ./).
 
 As before for testing purposes, the reference set can be found in the reference_set/ directory.  A successful run of the reference set will end with the final line:  "CLEAN EXIT"
 
