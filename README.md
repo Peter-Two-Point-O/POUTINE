@@ -139,3 +139,5 @@ The fix is to make only part of the put() operation atomic so that all reads fro
 
 
 
+## License
+See the [LICENSE](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/5803828df31f41951f69a70b9cca61135562ff28/LICENSE) file for license rights and limitations (GNU GPL3).
