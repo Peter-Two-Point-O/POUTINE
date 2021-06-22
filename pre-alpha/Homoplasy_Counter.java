@@ -1,3 +1,22 @@
+/**
+    POUTINE:  a homoplasy counter for genome-wide association studies.
+    Copyright (C) 2020  Peter E. Chen
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License or
+    any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
 import org.apache.commons.math3.stat.inference.AlternativeHypothesis;
 import org.apache.commons.math3.stat.inference.BinomialTest;
 import org.gersteinlab.coevolution.core.data.*;
@@ -276,6 +295,19 @@ public class Homoplasy_Counter implements Callable<Integer> {
         // homoplasy counts
         ArrayList<Homoplasy_Events> all_events = count_all_homoplasy_events(tree, seg_sites, physical_poss);
 
+        /** closer look at site 1674048
+//        System.out.println("all_events.size() = " + all_events.size());
+//        all_events.forEach(s -> System.out.println(s.toString()));
+//        System.out.println("\n\n");
+        int segsite_index = -1;
+        for (int i = 0; i < all_events.size(); i++) {
+            if (all_events.get(i).physical_pos == 1674048)
+                segsite_index = i;
+        }
+        this.output_segsite_events_as_branch_colors(all_events, segsite_index);
+        System.exit(-1);
+        */
+        
         assoc(all_events, phenos);
 
         end_session();
@@ -5411,7 +5443,12 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * against the MRCAs I find visually by drawing the ancestrally reconstructed alleles using Build_Branch_Color_Annotation_Files.
      */
     private void output_segsite_events_as_branch_colors(ArrayList<Homoplasy_Events> all_events, int i) {
-        Homoplasy_Events segsite_events = all_events.get(i - 1);
+//        Homoplasy_Events segsite_events = all_events.get(i - 1);  // now explicitly using the index into ArrayList of Homoplasy_Events so no longer need a minus 1
+        Homoplasy_Events segsite_events = all_events.get(i);
+
+        // DEBUG
+        System.out.println("segsite_events.toString()\t: " + segsite_events.toString());
+
         segsite_events.output_events_as_branch_colors();
     }
 
@@ -5422,7 +5459,12 @@ public class Homoplasy_Counter implements Callable<Integer> {
      * Build_Branch_Color_Annotation_File).
      */
     private void output_segsite_MRCAs_and_clades_as_branch_colors(ArrayList<Homoplasy_Events> all_events, int i) {
-        Homoplasy_Events segsite_events = all_events.get(i - 1);
+//        Homoplasy_Events segsite_events = all_events.get(i - 1);  // now explicitly using the index into ArrayList of Homoplasy_Events so no longer need a minus 1
+        Homoplasy_Events segsite_events = all_events.get(i);
+
+        // DEBUG
+        System.out.println("segsite_events.toString()\t: " + segsite_events.toString());
+
         segsite_events.output_events_and_their_clades_as_branch_colors();
     }
 
