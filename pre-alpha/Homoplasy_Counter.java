@@ -48,7 +48,7 @@ import static java.nio.file.StandardOpenOption.APPEND;
  * @author Peter E Chen
  * @version 1.0.0 alpha
  */
-@Command(name = "poutine", version = "%npoutine 1.0.0 (alpha)%n", mixinStandardHelpOptions = true, usageHelpWidth = 210, sortOptions = false, headerHeading = "%n", optionListHeading = "%n", footerHeading = "%n")
+@Command(name = "poutine", version = "%nPOUTINE 1.0.0%n", mixinStandardHelpOptions = true, usageHelpWidth = 210, sortOptions = false, headerHeading = "%n", optionListHeading = "%n", footerHeading = "%n")
 public class Homoplasy_Counter implements Callable<Integer> {
     @Spec
     static CommandSpec spec;
@@ -65,7 +65,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
             @Option(names = {"-v", "--vcf"}, description = "Multi-sample vcf file (this option is currently not in use/available)")
             private String vcf_filename;
 
-            @Option(names = {"-f", "--fasta"}, description = "Multi-fasta file (ancestral fasta file if -u in use)")
+            @Option(names = {"-f", "--fasta"}, description = "Multi-fasta file (ancestral fasta file if -u in use). Variable sites only. Sites must be in the same order as in the physical position file.")
             private String msa_fasta_filename;
         }
 
@@ -95,8 +95,8 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 throw new ParameterException(spec.commandLine(), String.format("%nInvalid value '%s' for option '--replicates': " + "# replicates used for resampling must be > 0", user_value));
         }
 
-        private static int min_hcount = 4;  // default value.  1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
-        @Option(names = {"-c", "--min_hcount"}, paramLabel = "<count>", description = "Min # homoplasic mutations required at each segregating site (default: 4). This option is analogous to the common maf filter.", required = false, order = 2)
+        private static int min_hcount = 1;  // default value.  1 := use all homoplasic seg sites, 0 := use all seg sites including those without any homoplasic mutations on either allele
+        @Option(names = {"-c", "--min_hcount"}, paramLabel = "<count>", description = "Minimum # homoplasic mutations required at each allele (default: 1)", required = false, order = 2)
         private void validate_and_set_min_hcount_option(int user_value) {
             if (user_value >= 0)
                 min_hcount = user_value;
@@ -154,7 +154,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
     }
 
 // Remaining global variables:
-//
+    private final String VERSION = "1.0.0";
 //    private final String newick_filename;
 //    private final String nexus_filename;  // treetime's annotated nexus file containing tree with internal nodes labeled
 //    private final String ancestral_reconstruction_filename;  // treetime's fasta file containing ancestral genotypes
@@ -286,6 +286,9 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         // TODO:  refactor all ArrayLists into arrays[] since I know the sizes ahead of time?
 
+        // check for mismatch of # seg sites between ancestral genotype file and input positions file
+        check_num_seg_sites(seg_sites, physical_poss);
+
         HashMap<String, String> phenos = read_phenos();  // only extant phenotypes
 
         // check for mismatched sample names across files:  input geno, pheno, tree files.  Fail fast if sample names do not completely match.
@@ -307,12 +310,41 @@ public class Homoplasy_Counter implements Callable<Integer> {
         this.output_segsite_events_as_branch_colors(all_events, segsite_index);
         System.exit(-1);
         */
-        
+
         assoc(all_events, phenos);
 
         end_session();
 
         return 0;
+    }
+
+
+    /**
+     *
+     * @param seg_sites
+     * @param physical_poss
+     */
+    private void check_num_seg_sites(HashMap<String,char[]> seg_sites, int[] physical_poss) {
+        int num_sites_from_anc_recon_file = seg_sites.values().stream().findFirst().get().length;
+        int num_sites_from_map_file = physical_poss.length;
+
+        if (num_sites_from_anc_recon_file != num_sites_from_map_file) {
+            System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while checking # segregating sites between ancestral fasta file and physical positions file.  Please see the log file for more information on this error.%n|@"));
+
+            try {
+                outputOptions.log.write(String.format("%nError: the # segregating sites in the ancestral fasta file does not equal the # of segregating sites in the input physical positions file.%n" +
+                                                      "The input fasta file must contain only variable sites and must be in the same order as the input physical positions file.%n"));
+                outputOptions.log.write(String.format("%n# segregating sites detected in ancestral fasta file = " + num_sites_from_anc_recon_file +
+                                                      "%n# segregating sites detected in physical positions file = " + num_sites_from_map_file + "%n"));
+                outputOptions.log.flush();
+            } catch (IOException e) {
+                System.out.printf(Ansi.AUTO.string("@|red,bold %nAn error has occurred while writing out to the log file. Please see the stack trace in the log file for more information on this error.%n|@"));
+                e.printStackTrace();
+                System.exit(-1);
+            }
+
+            System.exit(-1);
+        }
     }
 
 
@@ -508,7 +540,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         if (DEBUG_MODE) {
             try {
                 outputOptions.debug = new BufferedWriter(new FileWriter(outputOptions.output_dir + File.separator + basename + curr_time + ".debug"));
-                outputOptions.debug.write("poutine session start time: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")));
+                outputOptions.debug.write("poutine " + VERSION + " session start time: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")));
                 outputOptions.debug.newLine();
                 outputOptions.debug.flush();  // since in DEBUG mode, I want to capture everything in the buffer immediately in case of early program termination
             } catch (IOException e) {
@@ -592,7 +624,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
         BufferedWriter log = outputOptions.log;
 
         try {
-            log.write("poutine session start time: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")));
+            log.write("poutine " + VERSION + " session start time: " + session_start_time.format(DateTimeFormatter.ofPattern("YYYY-LLLL-dd EEEE HH'h':mm'm':ss's' O")));
             log.newLine();
             log.newLine();
 
@@ -1213,6 +1245,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
 
         try {
             int num_segsites_detected = -1;
+//            int num_seqs = 0;
 
     //        Fasta_Manager multi_fasta_file = new Fasta_Manager(anc_recon_dir + File.separator + "ancestral_sequences.fasta");
 //            Fasta_Manager multi_fasta_file = new Fasta_Manager(outputOptions.anc_recon_dir + File.separator + "ancestral_sequences.fasta");
@@ -1235,6 +1268,7 @@ public class Homoplasy_Counter implements Callable<Integer> {
                 num_segsites_detected = seq.length;  // TODO:  check to make sure every single fasta seq has the same # sites
                 // DEBUG
     //            System.out.println(node_name + "\t" + seq.length);
+//                num_seqs++;
             }
 
         /*// replace this section with code from my bioinformatics library to process fasta files: =======================================
