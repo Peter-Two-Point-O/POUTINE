@@ -1,1 +1,0 @@
-java -cp "compiled:compiled/coevolution.jar:compiled/commons-math3-3.6.1.jar" Homoplasy_Counter reference_set/mtb_maf_05.fasta reference_set/mtb_maf05.newick reference_set/mtb.phenos reference_set/mtb_maf_05.map false
