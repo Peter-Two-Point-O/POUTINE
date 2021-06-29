@@ -4,6 +4,17 @@ POUTINE is a homoplasy-counting-based method for genome-wide association studies
 
 Stay tuned as POUTINE will continue to evolve to include [new major features](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#upcoming-major-featurescode-changes) and enhancements.  POUTINE is designed to be user-friendly, and we welcome suggestions for improvements in our [Discussion section](https://github.com/Peter-Two-Point-O/POUTINE/discussions).  Collaborations are welcome!
 
+## Table Of Contents
+
+*   [Updates](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#updates)
+*   [Installation](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#installation)
+*   [Executing The Program](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#executing-the-program)
+*   [Understanding The Output Files](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#understanding-the-output-files)
+*   [Citation](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#citation)
+*   [License](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#license)
+*   [Upcoming Major Features/Code Changes](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#upcoming-major-featurescode-changes)
+*   [Notes From Alpha Development Of POUTINE](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#notes-from-alpha-development-of-poutine)
+
 ## Updates
 
 First blog post coming soon!
