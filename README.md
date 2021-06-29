@@ -1,8 +1,8 @@
 # POUTINE
 
-POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS).  It is particularly well-suited to identify causal variants in strongly clonal populations.  For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our manuscript (insert link).  
+POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS).  It is particularly well-suited to identify causal variants in strongly clonal populations.  For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our [manuscript](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#citation).  
 
-Stay tuned as POUTINE will continue to evolve to include new major features (insert link) and enhancements.  POUTINE is designed to be user-friendly, and we welcome suggestions for improvements in our Discussion section (insert link).  Collaborations are welcome!
+Stay tuned as POUTINE will continue to evolve to include [new major features](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#upcoming-major-featurescode-changes) and enhancements.  POUTINE is designed to be user-friendly, and we welcome suggestions for improvements in our [Discussion section](https://github.com/Peter-Two-Point-O/POUTINE/discussions).  Collaborations are welcome!
 
 ## Updates
 
@@ -26,13 +26,11 @@ Execute: `./poutine.sh --help` to see all command-line options.
 
 Setting poutine.sh into your global path will allow you to call poutine.sh from anywhere (you won't need the ./).
 
-Since a picture is worth a thousand words:  
- 
+Since a picture is worth a thousand words:  
 
 ![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/images/poutine_cli_screenshot_3.png)
 
-This is what a clean run should look like in the terminal with default settings:  
- 
+This is what a clean run should look like in the terminal with default settings:  
 
 ![Image of new console updates](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/images/poutine_console_screenshot.png)
 
@@ -75,7 +73,9 @@ See the [LICENSE](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Bette
 *   Ability to homoplasy count indels
 *   Multi-thread homoplasy identification step
 
-## Recent Major Code Changes
+## Notes From Alpha Development Of POUTINE
+
+### Recent Major Code Changes
 
 *   Removed q-values from the significance assessment. Thus, all things R have been removed. The main reason for this feature removal is because the resampling-derived FWER (maxT variant) is sufficient for users to sort and look for top hits (remember the philosophy here is "easier is better than better"). It's also more robust than many methods in the FDR space because max(T) better address dependency structures between segregating sites.  In a future release, when we are likely to add estimation statistics like a resampling-derived effect size + confidence intervals, we can reconsider the progress of FDR-based methods for addressing dependence structures.
 *   Incorporated treetime for purposes of genotypic ancestral reconstruction using the default optimized joint probabilities method.
@@ -106,7 +106,7 @@ See the [LICENSE](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Bette
 
 > Differences between the 2 options: I think option 2 is less error prone because I anticipate users removing samples with missing pheno data by simply deleting those rows from the pheno file only (and not also in the input geno file as required). I could check for this with code and prompt the user to modify input files, but then modifying fasta files by an average user could also introduce errors. With option 2, the program now protects a user if they are not even aware there are phenos with missing data/improperly coded.
 
-*   Program now understands missing genotypes. 
+*   Program now understands missing genotypes.
 
 > The philosophy here is essentially the same as missing phenotypes (though the code is not!):
 
@@ -119,7 +119,7 @@ Suite of "niceties" to make the program easier to use:
 1.  Program now checks for mismatched sample names across input files. This is a common error and thus worth checking or else results may be incorrect. Specifically, the program now checks for mismatched sample names across input genotype, phenotype, and tree files. Note that this program itself does not place any restrictions on the makeup of the string that comprises the sample name. The only requirement is that sample names across files match. Program fails-fast if the sample names do not match, and the log file now reports the sample names in the phenotype file that do not match with either genotype and/or tree file.
 2.  Improvements to log file, command-line help message, and terminal progress indicator.
 
-## Current Major Bugs
+### Current Major Bugs
 
 **No major bugs!**
 
