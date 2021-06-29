@@ -68,6 +68,28 @@ For convenience, you can view the results output files in pretty-format using th
 
 To set TAB as the delimiter, macOS and Linux systems usually want `Ctrl-v <tab>` which is a Ctrl-v followed immediately by the tab key.
 
+The results files that most users will be interested in are \*.out.sorted\_by\_a1\_maxT and \*.out.sorted\_by\_a2\_maxT.  Both output files contain the same column format, and the columns are:
+
+1.  segsite\_ID:  Internal integer ID that POUTINE assigns to each segregating site.  This value is sequential in the same order as the input physical positions file.
+2.  physical\_pos:  Physical position of the site as specified in the input physical positions file.
+3.  allele1:  Major allele.
+4.  allele2:  Minor allele.
+5.  a1\_count:  Total homoplasy count at major allele.
+6.  a2\_count:  Total homoplasy count at minor allele.
+7.  a1\_count\_extant\_only:  Total homoplasy count at major allele in only extant input samples (i.e. homoplasies identified on the internal branches from ancestral reconstruction are not counted).
+8.  a2\_count\_extant\_only:  Total homoplasy count at minor allele in only extant input samples (i.e. homoplasies identified on the internal branches from ancestral reconstruction are not counted).
+9.  obs\_homoplasy\_counts:  Total homoplasy counts for both alleles broken down by phenotype.  The format is \[a1 cases, a1 controls, a2 cases, a2 controls\].
+10.  r\_a1:  # replicates from the empirical null distribution that is equal to or more extreme than the observed test statistic (major allele only).
+11.  r\_a2:  # replicates from the empirical null distribution that is equal to or more extreme than the observed test statistic (minor allele only).
+12.  pointwise\_pvalue\_a1:  Pointwise resampling-derived estimate for the major allele.
+13.   pointwise\_pvalue\_a2:  Pointwise resampling-derived estimate for the minor allele.
+14.  obs\_binom\_pvalue\_a1:  Binomial test p-value of the observed homoplasy counts at the major allele.
+15.  obs\_binom\_pvalue\_a2:  Binomial test p-value of the observed homoplasy counts at the minor allele.
+16.  r\_maxT\_a1:  # max(T) test statistics from resampling that is equal to or more extreme than the observed test statistic (major allele only).
+17.  r\_maxT\_a2:  # max(T) test statistics from resampling that is equal to or more extreme than the observed test statistic (minor allele only).
+18.  familywise\_pvalue\_a1:  max(T) FWER for the major allele.
+19.  familywise\_pvalue\_a2:  max(T) FWER for the minor allele.
+
 ## Citation
 
 Please cite . . . (preprint link coming shortly)
