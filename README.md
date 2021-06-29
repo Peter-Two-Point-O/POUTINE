@@ -39,7 +39,7 @@ Setting poutine.sh into your global path will allow you to call poutine.sh from 
 
 Since a picture is worth a thousand words:  
 
-![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/images/poutine_cli_screenshot_3.png)
+![Image of new cli](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/images/poutine_cli_screenshot_4.png)
 
 This is what a clean run should look like in the terminal with default settings:  
 
