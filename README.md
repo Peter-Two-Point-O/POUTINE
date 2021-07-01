@@ -1,3 +1,5 @@
+![Image of new cli](https://github.com/Peter-Two-Point-O/POUTINE/blob/a8a990851e418a1fcea19e55955803692d7f6516/images/POUTINE%20logo%202.png)
+
 # POUTINE
 
 POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS).  It is particularly well-suited to identify causal variants in strongly clonal populations.  For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our [manuscript](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#citation).  
