@@ -43,7 +43,7 @@ Since a picture is worth a thousand words:  
 
 This is what a clean run should look like in the terminal with default settings:  
 
-![Image of new console updates](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/images/poutine_console_screenshot.png)
+![Image of new console updates](https://github.com/Peter-Two-Point-O/Easy-Is-Better-Than-Better/blob/master/images/poutine_console_screenshot_2.png)
 
 ## Understanding The Output Files
 
