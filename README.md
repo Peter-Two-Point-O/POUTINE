@@ -84,7 +84,7 @@ The results files that most users will be interested in are \*.out.sorted\_by\_a
 10.  r\_a1:  # replicates from the empirical null distribution that is equal to or more extreme than the observed test statistic (major allele only).
 11.  r\_a2:  # replicates from the empirical null distribution that is equal to or more extreme than the observed test statistic (minor allele only).
 12.  pointwise\_pvalue\_a1:  Pointwise resampling-derived estimate for the major allele.
-13.   pointwise\_pvalue\_a2:  Pointwise resampling-derived estimate for the minor allele.
+13.  pointwise\_pvalue\_a2:  Pointwise resampling-derived estimate for the minor allele.
 14.  obs\_binom\_pvalue\_a1:  Binomial test p-value of the observed homoplasy counts at the major allele.
 15.  obs\_binom\_pvalue\_a2:  Binomial test p-value of the observed homoplasy counts at the minor allele.
 16.  r\_maxT\_a1:  # max(T) test statistics from resampling that is equal to or more extreme than the observed test statistic (major allele only).
@@ -94,7 +94,7 @@ The results files that most users will be interested in are \*.out.sorted\_by\_a
 
 ## Citation
 
-Please cite . . . (preprint link coming shortly)
+Our preprint is currently available on bioRxiv:  [**Classic genome-wide association methods are unlikely to identify causal variants in strongly clonal microbial populations.**](https://www.biorxiv.org/content/10.1101/2021.06.30.450606v1)
 
 ## License
 
