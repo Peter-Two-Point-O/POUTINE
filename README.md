@@ -19,7 +19,7 @@ Stay tuned as POUTINE will continue to evolve to include [new major features](ht
 
 ## Updates
 
-First blog post coming soon!
+**2022 June 14:**  There is a known issue with the latest version of Treetime where it adds curly braces to its output filenames for ancestral reconstruction.  A patch will be coming soon!  In the meantime, one can either manually remove the curly braces from the Treetime output files and then run POUTINE using the "--use-precomputed-anc-recon" option using the newly renamed files, or simply run the slightly older Treetime version before the latest change that added the curly braces to its hard-coded output filenames.
 
 ## Installation
 
