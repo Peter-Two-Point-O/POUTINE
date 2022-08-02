@@ -19,15 +19,15 @@ Stay tuned as POUTINE will continue to evolve to include [new major features](ht
 
 ## Updates
 
-**2022 June 14:**  There is a known issue with the latest version of Treetime where it adds curly braces to its output filenames for ancestral reconstruction.  A patch will be coming soon!  In the meantime, one can either manually remove the curly braces from the Treetime output files and then run POUTINE using the "--use-precomputed-anc-recon" option using the newly renamed files, or simply run the slightly older Treetime version before the latest change that added the curly braces to its hard-coded output filenames.
+**2022 June 14:**  There is a known issue with the latest version of Treetime (0.9.0 and above) where it adds curly braces to its output filenames for ancestral reconstruction.  A patch will be coming soon!  In the meantime, one can either manually remove the curly braces from the Treetime output files and then run POUTINE using the "--use-precomputed-anc-recon" option using the newly renamed files, or simply run the slightly older Treetime version (up to and including 0.8.6) before the latest change that added the curly braces to its hard-coded output filenames.
 
 ## Installation
 
 POUTINE requires:
 
 *   java (https://www.oracle.com/java/technologies/javase-downloads.html)
-*   python (https://www.python.org/downloads/)
-*   treetime (https://treetime.readthedocs.io/en/latest/installation.html)
+*   python (https://www.python.org/downloads/) 
+*   treetime (https://treetime.readthedocs.io/en/latest/installation.html) (use version 0.8.6 for now, see update above)
 
 Users are encouraged to use the latest version of the Java Virtual Machine (JVM) for both substantial speed and memory improvements compared to much older JVMs (e.g. Java 8) currently installed on many machines.
 
