@@ -19,7 +19,17 @@ Stay tuned as POUTINE will continue to evolve to include [new major features](ht
 
 ## Updates
 
-**2022 June 14:**  There is a known issue with the latest version of Treetime (0.9.0 and above) where it adds curly braces to its output filenames for ancestral reconstruction.  A patch will be coming soon!  In the meantime, one can either manually remove the curly braces from the Treetime output files and then run POUTINE using the "--use-precomputed-anc-recon" option using the newly renamed files, or simply run the slightly older Treetime version (up to and including 0.8.6) before the latest change that added the curly braces to its hard-coded output filenames.
+### 2022 August 3  
+Two announcements for today.
+First, the Neher lab has informed us that treetime's curly brace bug will likely be fixed in their next release.  Until then, please continue to use either of the following two workarounds:
+1.  Manually remove the curly braces from treetime's two output files (annotated_tree{}.nexus and ancestral_sequences{}.fasta), and run POUTINE again with the --use-precomputed-anc-recon option using the newly renamed files.
+2.  Install a recent version of treetime that does not have this curly brace bug (version 0.8.6).  One can do this using pip with the following line:
+`pip install phylo-treetime==0.8.6`
+
+Second, the Neher lab has also informed us that treetime does not currently work on Windows.  A future release of treetime may support Windows, so stay tuned.  Until such time, POUTINE will not run on Windows.
+  
+### 2022 June 14
+There is a known issue with the latest version of Treetime (0.9.0 and above) where it adds curly braces to its output filenames for ancestral reconstruction.  A patch will be coming soon!  In the meantime, one can either manually remove the curly braces from the Treetime output files and then run POUTINE using the "--use-precomputed-anc-recon" option using the newly renamed files, or simply run the slightly older Treetime version (up to and including 0.8.6) before the latest change that added the curly braces to its hard-coded output filenames.
 
 ## Installation
 
