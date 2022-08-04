@@ -2,20 +2,20 @@
 
 # POUTINE
 
-POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS).  It is particularly well-suited to identify causal variants in strongly clonal populations.  For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our [manuscript](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#citation).  
+POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS).  It is particularly well-suited to identify causal variants in strongly clonal populations.  For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our [manuscript](https://github.com/Peter-Two-Point-O/POUTINE#citation).  
 
-Stay tuned as POUTINE will continue to evolve to include [new major features](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#upcoming-major-featurescode-changes) and enhancements.  POUTINE is designed to be user-friendly, and we welcome suggestions for improvements in our [Discussion section](https://github.com/Peter-Two-Point-O/POUTINE/discussions).  Collaborations are welcome!
+Stay tuned as POUTINE will continue to evolve to include [new major features](https://github.com/Peter-Two-Point-O/POUTINE#upcoming-major-featurescode-changes) and enhancements.  POUTINE is designed to be user-friendly, and we welcome suggestions for improvements in our [Discussion section](https://github.com/Peter-Two-Point-O/POUTINE/discussions).  Collaborations are welcome!
 
 ## Table Of Contents
 
-*   [Updates](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#updates)
-*   [Installation](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#installation)
-*   [Executing The Program](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#executing-the-program)
-*   [Understanding The Output Files](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#understanding-the-output-files)
-*   [Citation](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#citation)
-*   [License](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#license)
-*   [Upcoming Major Features/Code Changes](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#upcoming-major-featurescode-changes)
-*   [Notes From Alpha Development Of POUTINE](https://github.com/Peter-Two-Point-O/POUTINE/blob/master/README.md#notes-from-alpha-development-of-poutine)
+*   [Updates](https://github.com/Peter-Two-Point-O/POUTINE#updates)
+*   [Installation](https://github.com/Peter-Two-Point-O/POUTINE#installation)
+*   [Executing The Program](https://github.com/Peter-Two-Point-O/POUTINE#executing-the-program)
+*   [Understanding The Output Files](https://github.com/Peter-Two-Point-O/POUTINE#understanding-the-output-files)
+*   [Citation](https://github.com/Peter-Two-Point-O/POUTINE#citation)
+*   [License](https://github.com/Peter-Two-Point-O/POUTINE#license)
+*   [Upcoming Major Features/Code Changes](https://github.com/Peter-Two-Point-O/POUTINE#upcoming-major-featurescode-changes)
+*   [Notes From Alpha Development Of POUTINE](https://github.com/Peter-Two-Point-O/POUTINE#notes-from-alpha-development-of-poutine)
 
 ## Updates
 
