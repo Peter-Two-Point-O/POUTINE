@@ -2,7 +2,12 @@
 
 # POUTINE
 
-POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS).  It is particularly well-suited to identify causal variants in strongly clonal populations.  For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our [manuscript](https://github.com/Peter-Two-Point-O/POUTINE#citation).  
+POUTINE is a homoplasy-counting-based method for genome-wide association studies (GWAS) for microbial genomes.  It is particularly well-suited to identify causal variants in strongly clonal populations which exhibit strong and long-range linkage disequilibrium (LD).  In addition to clonal pops, we recommend using homoplasy counting also for populations higher up the recombination scale (including even highly recombining pops) for three major reasons:
+1) Candidate causal variants identified by POUTINE are likely sculpted by convergent evolution and provides orthogonal evidence in conjunction with traditional allele-counting methods that the site is causal.   
+2) Based upon dense recombination maps, it is likely that many microbial populations will harbor regions of the genome that show insufficient recombination for traditional allele-counting methods to resolve the causal signal from linked sites.  The number and size of these strongly clonal regions may be substantial and would benefit from homoplasy counting.
+3) In most scenarios, POUTINE provides increased statistical power over commonly used regression-based allele-counting approaches.  See our manuscript for an example comparing POUTINE and PLINK hits in an M. tuberculosis pop of ~1300 strains.
+
+For a deeper understanding of POUTINE and its use for microbial GWAS, please refer to our [manuscript](https://github.com/Peter-Two-Point-O/POUTINE#citation).  
 
 Stay tuned as POUTINE will continue to evolve to include [new major features](https://github.com/Peter-Two-Point-O/POUTINE#upcoming-major-featurescode-changes) and enhancements.  POUTINE is designed to be user-friendly, and we welcome suggestions for improvements in our [Discussion section](https://github.com/Peter-Two-Point-O/POUTINE/discussions).  Collaborations are welcome!
 
