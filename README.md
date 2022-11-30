@@ -24,6 +24,9 @@ Stay tuned as POUTINE will continue to evolve to include [new major features](ht
 
 ## Updates
 
+### 2022 November 30
+Updated the README to include our recommendation to use homoplasy counting for intermediate and highly recombining pops (and not just clonal pops).  We got this question a lot, so we hope this guidance helps.    
+
 ### 2022 August 3  
 Two announcements for today.
 First, the Neher lab has informed us that treetime's curly brace bug will likely be fixed in their next release.  Until then, please continue to use either of the following two workarounds:
